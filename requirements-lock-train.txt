@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Exact versions of the training environment the tests were last run in (CPython 3.10, macOS
+# arm64): the runtime dependencies and the "dev" and "train" extras together. pyproject.toml
+# holds the supported ranges.
+#
+#     python -m pip install -r requirements-lock-train.txt
+#     python -m pip install --no-deps -e .
+#
+# One package is not in this list and is installed afterwards, in a step of its own: YOLOX,
+# which builds the detector's network. Its metadata pins versions of other libraries that
+# conflict with the ones below, hence --no-deps, and its build script imports PyTorch, hence
+# --no-build-isolation (which also means setuptools must be in the environment):
+#
+#     python -m pip install --no-deps --no-build-isolation "yolox @ git+https://github.com/Megvii-BaseDetection/YOLOX@6ddff4824372906469a7fae2dc3206c7aa4bbaee"
+#
+# The revision is the one "cardvision export detector" was verified with
+# (cardvision/export/detector.py, YOLOX_REVISION). Without YOLOX the detector's export and
+# training tests are skipped. The check against the browser runtime is skipped unless npm ci
+# has been run in browser/. Everything else runs.
+#
+# Regenerate from a fresh environment with: python -m pip install -e ".[dev,train]"
+# and then: python -m pip freeze --exclude-editable
+attrs==26.1.0
+coloredlogs==15.0.1
+exceptiongroup==1.3.1
+filelock==4.1.0
+flatbuffers==25.12.19
+fsspec==2026.9.0
+humanfriendly==10.0
+iniconfig==2.3.1
+Jinja2==3.1.6
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+loguru==0.7.3
+MarkupSafe==3.0.4
+ml_dtypes==0.6.0
+mpmath==1.3.0
+networkx==3.4.2
+numpy==2.2.6
+onnx==1.23.2
+onnxruntime==1.23.2
+opencv-python-headless==5.0.0.93
+packaging==26.3
+pillow==12.3.0
+pluggy==1.6.0
+protobuf==7.36.2
+psutil==7.2.2
+pycocotools==2.0.11
+Pygments==2.21.0
+pytest==9.1.1
+referencing==0.37.0
+rpds-py==0.30.0
+safetensors==0.8.0
+sympy==1.14.0
+tabulate==0.10.0
+tomli==2.5.0
+torch==2.14.1
+torchvision==0.29.1
+tqdm==4.70.1
+typing_extensions==4.16.0

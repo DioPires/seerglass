@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Bug
+description: A command fails, gives a wrong result, or the documentation is wrong.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. One person maintains this repository and reads issues once a week.
+
+        **Do not attach card art, video frames or screenshots of someone's video.** Text is enough: the command and its output.
+
+        For "how do I adapt this to my game?", use Discussions. For a card named wrong, use the "Wrong recognition" form.
+  - type: textarea
+    id: command
+    attributes:
+      label: The command you ran
+      description: The whole command, as you typed it.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What it printed
+      description: The full output, error included. Remove any path or name you do not want public.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `cardvision --version`, and the commit if you know it.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, and whether you installed from a lock file.
+      placeholder: "macOS 15, Python 3.10, requirements-lock.txt"
+    validations:
+      required: true
+  - type: dropdown
+    id: models
+    attributes:
+      label: Which models
+      options:
+        - The released weights
+        - Models I trained with this repository
+        - The test suite's stand-in models (toy game)
+        - Does not involve models
+    validations:
+      required: true
+  - type: checkboxes
+    id: no-images
+    attributes:
+      label: No images
+      options:
+        - label: This issue contains no card art, no video frame and no screenshot of a video.
+          required: true

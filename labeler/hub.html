@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Card labeler</title>
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sources.css">
+  <link rel="stylesheet" href="/hub.css">
+</head>
+<body class="hub">
+  <header id="top">
+    <div id="where">
+      <a id="homeLink" class="back" href="/start" hidden>← All projects</a>
+      <span id="passName">Card labeler</span>
+    </div>
+    <span class="grow"></span>
+    <span id="connState" class="pill" title="Whether the labeling tool on this computer answers"></span>
+  </header>
+  <div id="guide" role="status" aria-live="polite"><span id="guideText"></span></div>
+  <div id="banner" class="saveBanner" role="alert" hidden></div>
+  <main id="hub"></main>
+  <script src="/uistate.js"></script>
+  <script src="/keyroute.js"></script>
+  <script src="/savegate.js"></script>
+  <script src="/hubstate.js"></script>
+  <script src="/hub.js"></script>
+</body>
+</html>

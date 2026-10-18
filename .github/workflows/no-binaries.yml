@@ -1,0 +1,82 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# No image, video or weights file belongs in this repository: no card art, no frames, no
+# screenshots, no model files. Weights are release assets.
+#
+# In a pull request the files it adds or changes are checked. On main the whole tree is. A
+# file is refused when its name has the suffix of an image, a video, a model or an archive,
+# when it is a symbolic link, or when it holds a zero byte (every file here is plain text).
+name: No images, videos or weights
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Text files only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Refuse images, videos, weights and other binary files
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          IMAGES = {"png", "jpg", "jpeg", "jpe", "webp", "gif", "bmp", "tif", "tiff", "avif", "heic", "heif",
+                    "ico", "svg", "psd", "jp2", "jxl"}
+          VIDEOS = {"mp4", "m4v", "mov", "mkv", "webm", "avi", "flv", "wmv", "mpg", "mpeg", "m2ts", "3gp"}
+          MODELS = {"onnx", "pt", "pth", "ckpt", "safetensors", "bin", "npy", "npz", "pkl", "pickle", "h5",
+                    "hdf5", "tflite", "pb", "gguf", "mlmodel", "engine", "weights"}
+          ARCHIVES = {"zip", "tar", "gz", "tgz", "bz2", "xz", "7z", "rar"}
+          KINDS = [("an image", IMAGES), ("a video", VIDEOS), ("a model or weights file", MODELS),
+                   ("an archive", ARCHIVES)]
+
+
+          def git(*arguments):
+              return subprocess.run(["git", *arguments], check=True, capture_output=True).stdout
+
+
+          base, head = os.environ.get("BASE", ""), os.environ.get("HEAD", "")
+          if base and head:
+              listing = git("diff", "--name-only", "-z", "--diff-filter=ACMR", f"{base}...{head}")
+              scope = "added or changed by this pull request"
+          else:
+              listing = git("ls-files", "-z")
+              scope = "in the repository"
+          names = [name.decode("utf-8", "surrogateescape") for name in listing.split(b"\0") if name]
+
+          problems = []
+          for name in names:
+              if not os.path.lexists(name):
+                  continue  # deleted later in the same pull request
+              suffix = name.rsplit(".", 1)[-1].lower() if "." in os.path.basename(name) else ""
+              kind = next((label for label, suffixes in KINDS if suffix in suffixes), None)
+              if kind:
+                  problems.append(f"{name}: its name is that of {kind}")
+              elif os.path.islink(name):
+                  problems.append(f"{name}: a symbolic link")
+              elif os.path.isfile(name):
+                  with open(name, "rb") as handle:
+                      if b"\0" in handle.read():
+                          problems.append(f"{name}: not a text file (it holds a zero byte)")
+
+          print(f"{len(names)} file(s) {scope} checked")
+          if problems:
+              print("\nThese files do not belong in the repository:")
+              for line in problems:
+                  print(f"  - {line}")
+              print("\nNo card art, video frames, screenshots or model files are kept here. See CONTRIBUTING.md.")
+              sys.exit(1)
+          PY

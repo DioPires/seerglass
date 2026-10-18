@@ -1,0 +1,29 @@
+{
+ "schemaVersion": 1,
+ "kind": "identity-groups",
+ "game": "toy",
+ "locale": "en",
+ "version": 1,
+ "bank": {
+  "version": 1,
+  "sha256": "7bb9f8c008092779cf97e9d2867eba1a796a1fed6845455e06ac4003d51e475a"
+ },
+ "rule": {
+  "level": "name"
+ },
+ "identityCount": 18,
+ "groups": [
+  [
+   "TOY-003",
+   "TOY-003A"
+  ],
+  [
+   "TOY-010",
+   "TOY-P01"
+  ]
+ ],
+ "representative": {
+  "TOY-003A": "TOY-003",
+  "TOY-P01": "TOY-010"
+ }
+}

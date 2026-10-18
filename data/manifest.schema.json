@@ -1,0 +1,623 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Label manifest row",
+  "description": "One labeled video frame. A manifest is a JSON Lines file of these.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "platform",
+    "video_id",
+    "t",
+    "frame_width",
+    "frame_height",
+    "source_type",
+    "group",
+    "role",
+    "trained_on",
+    "completeness",
+    "credit",
+    "reachable",
+    "reachable_checked"
+  ],
+  "properties": {
+    "manifest_version": {
+      "description": "Version of this format.",
+      "const": 1
+    },
+    "platform": {
+      "description": "Where the video is hosted, or local for a recording of your own that is on no platform.",
+      "enum": [
+        "youtube",
+        "twitch",
+        "local"
+      ]
+    },
+    "video_id": {
+      "description": "The platform's id of the video, which identifies the video's channel. For a local recording, a name chosen by whoever made it.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "t": {
+      "description": "A time in seconds, from the start of the video, at which the labeled frame is on screen.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 400000
+    },
+    "frame_width": {
+      "description": "Width in pixels of the frame the labels were made on.",
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 16384
+    },
+    "frame_height": {
+      "description": "Height in pixels of the frame the labels were made on.",
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 16384
+    },
+    "source_type": {
+      "description": "The kind of footage: physical or digital, optionally with a detail after a slash.",
+      "type": "string",
+      "pattern": "^(physical|digital)(/[a-z0-9]+(-[a-z0-9]+)*)?$"
+    },
+    "group": {
+      "description": "Pseudonymous id of the recording group: videos that share an origin (a channel, an event) share a group and are never split across roles.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$"
+    },
+    "role": {
+      "description": "train: published as training data. evaluation: part of the public evaluation set, never trained on. extra: published, in neither set.",
+      "enum": [
+        "train",
+        "evaluation",
+        "extra"
+      ]
+    },
+    "trained_on": {
+      "description": "True only when this frame was among the frames the released models were trained on.",
+      "type": "boolean"
+    },
+    "completeness": {
+      "description": "exhaustive-boxes: every card in the frame has a box. points: only the listed points are labeled.",
+      "enum": [
+        "exhaustive-boxes",
+        "points"
+      ]
+    },
+    "credit": {
+      "description": "The credit chosen by whoever contributed the labels.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "pattern": "^[^\\s\\u0000-\\u001f\\u007f]([^\\u0000-\\u001f\\u007f]*[^\\s\\u0000-\\u001f\\u007f])?$"
+    },
+    "reachable": {
+      "description": "Whether the video could be found when last checked; null when never checked, and always null for a local recording.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "reachable_checked": {
+      "description": "Date of that check (YYYY-MM-DD), or null when never checked.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "prefill_offered": {
+      "description": "Whether a model's proposed boxes were shown to the labeler on this frame.",
+      "type": "boolean"
+    },
+    "attributes": {
+      "description": "Further labeled facts, as short machine-readable values. Never free text.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 16,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,31}$"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,47}$"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          }
+        ]
+      },
+      "properties": {
+        "frame_dhash": {
+          "description": "The fingerprint of the frame the labels were made on: 16 lower-case hexadecimal digits, defined in data/SCHEMA.md.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        }
+      }
+    },
+    "boxes": {
+      "description": "The frame's boxes. Under exhaustive-boxes an empty list means a frame with no card.",
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "$ref": "#/$defs/box"
+      }
+    },
+    "points": {
+      "description": "Labeled points of the frame.",
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "$ref": "#/$defs/point"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "an exhaustive-boxes row has boxes; a points row has at least one point and no box",
+      "if": {
+        "properties": {
+          "completeness": {
+            "const": "exhaustive-boxes"
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "required": [
+          "boxes"
+        ]
+      },
+      "else": {
+        "required": [
+          "points"
+        ],
+        "properties": {
+          "points": {
+            "minItems": 1
+          },
+          "boxes": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "$comment": "a YouTube video id has 11 characters",
+      "if": {
+        "properties": {
+          "platform": {
+            "const": "youtube"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_id": {
+            "pattern": "^[A-Za-z0-9_-]{11}$"
+          }
+        }
+      }
+    },
+    {
+      "$comment": "a Twitch video id is a number",
+      "if": {
+        "properties": {
+          "platform": {
+            "const": "twitch"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_id": {
+            "pattern": "^[0-9]{6,12}$"
+          }
+        }
+      }
+    },
+    {
+      "$comment": "a local recording's video id starts with a letter or a digit, and nobody else can check that it is reachable",
+      "if": {
+        "properties": {
+          "platform": {
+            "const": "local"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      },
+      "then": {
+        "properties": {
+          "video_id": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+          },
+          "reachable": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "$comment": "reachable and reachable_checked are both null or both set",
+      "if": {
+        "properties": {
+          "reachable": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "reachable"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reachable_checked": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "reachable_checked": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "$comment": "only a train row can have trained the released models",
+      "if": {
+        "properties": {
+          "trained_on": {
+            "const": true
+          }
+        },
+        "required": [
+          "trained_on"
+        ]
+      },
+      "then": {
+        "properties": {
+          "role": {
+            "const": "train"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "box": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "ignore",
+        "quad",
+        "oriented",
+        "shape"
+      ],
+      "properties": {
+        "id": {
+          "description": "A name for this label, unique among its kind within the row.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
+        },
+        "kind": {
+          "description": "What is there: a card face, a card back, something that cannot be told apart (unreadable), or not a card at all (not-card).",
+          "enum": [
+            "face",
+            "back",
+            "unreadable",
+            "not-card"
+          ]
+        },
+        "ignore": {
+          "description": "True for an ignore region: training neither rewards nor penalizes it and scoring does not count it.",
+          "type": "boolean"
+        },
+        "quad": {
+          "description": "Four corners as [x, y] fractions of the frame, clockwise on screen.",
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "number",
+              "minimum": -1.0,
+              "maximum": 2.0
+            }
+          }
+        },
+        "oriented": {
+          "description": "True when the first corner is the card's own top-left, so the first edge is the card's top.",
+          "type": "boolean"
+        },
+        "shape": {
+          "description": "rotated-box: a rectangle fitted to the card, possibly turned. quad: four corners placed one by one.",
+          "enum": [
+            "rotated-box",
+            "quad"
+          ]
+        },
+        "card_id": {
+          "description": "The catalog id of the card, or null when it was not named. An id has no whitespace and no control character in it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\s\\u0000-\\u001f\\u007f-\\u009f\\ufeff]+$"
+        },
+        "identity": {
+          "description": "named: card_id says which card. unknown: a person looked and could not name it. unlabeled: nobody was asked to name it.",
+          "enum": [
+            "named",
+            "unknown",
+            "unlabeled"
+          ]
+        },
+        "readable": {
+          "description": "Whether the card can be named from this frame alone (yes, maybe, no), or null when that was not recorded.",
+          "enum": [
+            "yes",
+            "maybe",
+            "no",
+            null
+          ]
+        },
+        "origin": {
+          "description": "How the label came about, as a short tag (for example manual, prefill, seeded).",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+        },
+        "attributes": {
+          "description": "Further labeled facts, as short machine-readable values. Never free text.",
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 16,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,47}$"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "a face carries card_id, identity and readable; any other kind carries none of them",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "face"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "card_id",
+              "identity",
+              "readable"
+            ]
+          },
+          "else": {
+            "properties": {
+              "card_id": false,
+              "identity": false,
+              "readable": false
+            }
+          }
+        },
+        {
+          "$comment": "card_id is a catalog id exactly when identity is \"named\"",
+          "if": {
+            "properties": {
+              "identity": {
+                "const": "named"
+              }
+            },
+            "required": [
+              "identity"
+            ]
+          },
+          "then": {
+            "properties": {
+              "card_id": {
+                "type": "string"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "card_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "description": "A name for this label, unique among its kind within the row.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
+        },
+        "x": {
+          "description": "Fraction of the frame's width.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y": {
+          "description": "Fraction of the frame's height.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "kind": {
+          "description": "What is there: a card face, a card back, something that cannot be told apart (unreadable), or not a card at all (not-card).",
+          "enum": [
+            "face",
+            "back",
+            "unreadable",
+            "not-card"
+          ]
+        },
+        "card_id": {
+          "description": "The catalog id of the card, or null when it was not named. An id has no whitespace and no control character in it.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[^\\s\\u0000-\\u001f\\u007f-\\u009f\\ufeff]+$"
+        },
+        "identity": {
+          "description": "named: card_id says which card. unknown: a person looked and could not name it. unlabeled: nobody was asked to name it.",
+          "enum": [
+            "named",
+            "unknown",
+            "unlabeled"
+          ]
+        },
+        "readable": {
+          "description": "Whether the card can be named from this frame alone (yes, maybe, no), or null when that was not recorded.",
+          "enum": [
+            "yes",
+            "maybe",
+            "no",
+            null
+          ]
+        },
+        "origin": {
+          "description": "How the label came about, as a short tag (for example manual, prefill, seeded).",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+        },
+        "attributes": {
+          "description": "Further labeled facts, as short machine-readable values. Never free text.",
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 16,
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,47}$"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "$comment": "a face carries card_id, identity and readable; any other kind carries none of them",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "face"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "card_id",
+              "identity",
+              "readable"
+            ]
+          },
+          "else": {
+            "properties": {
+              "card_id": false,
+              "identity": false,
+              "readable": false
+            }
+          }
+        },
+        {
+          "$comment": "card_id is a catalog id exactly when identity is \"named\"",
+          "if": {
+            "properties": {
+              "identity": {
+                "const": "named"
+              }
+            },
+            "required": [
+              "identity"
+            ]
+          },
+          "then": {
+            "properties": {
+              "card_id": {
+                "type": "string"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "card_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

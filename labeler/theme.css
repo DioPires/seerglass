@@ -1,0 +1,64 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The look of the labeling tool, in one place. Changing a value here changes the tool's look:
+   the page's style sheet (sources.css) and the drawing on the frame (sources.js) read their
+   colors, spacing and corner radii from these properties and from nowhere else. */
+:root {
+  --bg: #0b0f16;
+  --bg-deep: #070a10;
+  --panel: #131022;
+  --raised: #1a1630;
+  --border: #241d3a;
+  --border-strong: #4c1d95;
+  --ink: #e6e6e6;
+  --ink-strong: #ffffff;
+  --muted: #8b8b98;
+  --off: #565664;
+  --accent: #a78bfa;
+  --accent-soft: #c4b5fd;
+  --accent-strong: #7c3aed;
+  --accent-deep: #4c1d95;
+  --on-accent: #ffffff;
+  --success: #22c55e;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --gradient-primary: linear-gradient(135deg, #7c3aed, #4c1d95);
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-pill: 999px;
+}
+
+/* The labeling tool's own colors: what is drawn on the frame. Each sits beside the shared
+   ones above. A kind of box is also told apart by its line (dashes, dots) and by a word on it,
+   never by its color alone, so these can change freely. */
+:root {
+  --line-model: var(--accent);         /* a box the model suggests, not yet checked: dash-dot */
+  --line-kept: var(--accent-soft);     /* a box kept from the previous frame: long dashes */
+  --line-confirmed: var(--success);    /* a box the labeler drew or checked: solid */
+  --line-back: var(--warning);         /* a card back: solid, with the word "back" */
+  --line-ignored: var(--muted);        /* an ignored box: dotted, with a cross */
+  --line-cross: var(--error);          /* the cross on an ignored box */
+  --line-adjusting: #f0abfc;           /* a box being adjusted: short dashes */
+  --line-selected: var(--ink-strong);  /* the selected box and its handles */
+  --line-open: var(--warning);         /* a card that still needs an answer */
+  --line-not-card: var(--muted);       /* something marked as not a card */
+  --mark-target: #f472b6;              /* the card, point or center being asked about */
+  --mark-top: #fde047;                 /* the bar on a card's top edge */
+  --mark-flag: #fde047;                /* a box flagged to fix later */
+  --mark-first: #38bdf8;               /* the first of two models whose names are compared */
+  --mark-second: var(--warning);       /* the second */
+  --frame-void: #000000;               /* behind a frame, and around small marks on it */
+  --frame-halo: rgba(0, 0, 0, 0.7);    /* the dark edge that keeps a line or a word readable */
+  --frame-faint: rgba(255, 255, 255, 0.35); /* the other boxes, while one is shown alone */
+}

@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+cff-version: 1.2.0
+message: "If you use these models, labels or tools, please cite this repository."
+title: "riftsight-vision: open weights, labels and tools for recognizing trading cards in gameplay video"
+type: software
+authors:
+  - family-names: "Yang"
+    given-names: "Raymond"
+license:
+  - Apache-2.0
+  - CC-BY-4.0
+version: "0.1.0"
+abstract: >-
+  A card detector, a card recognizer, the embedding bank and accept rule they run with, labels
+  on public gameplay video as a manifest, and the tools that train, label and evaluate. Built
+  for Riftbound and laid out so that it can be pointed at another card game. This project's own
+  work in the code and weights, and our own work in the bank and identity groups, and the
+  catalog's selection and arrangement, are licensed under Apache-2.0; the annotations in the
+  label manifests under CC BY 4.0. Neither covers the card images or the starting checkpoints'
+  terms (PROVENANCE.md). A fan project, not endorsed by Riot Games.
+keywords:
+  - card recognition
+  - object detection
+  - image retrieval
+  - trading card games
+repository-code: "https://github.com/ryangswe/riftsight-vision"
+date-released: "2026-10-19"

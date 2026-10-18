@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The hosted demo: the demo page of browser/ as a static site on GitHub Pages, where anyone can
+# try hovering cards with nothing to install. The page opens with a game picker
+# (browser/README.md, "The hosted demo"): the toy game, bundled with the site (its stand-in
+# models, its 20 colored-shape cards and an example table, written here by
+# tests/test_browser_fixtures.py --demo, never committed), and the One Piece Card Game, whose
+# release the page fetches from Hugging Face and checks against the SHA-256 its release
+# document pins.
+#
+# The browser runtime's tests run first; nothing is built if they fail. The site is deployed
+# only from main, and only when the repository's Pages are set to deploy from GitHub Actions
+# (Settings, Pages, Source: GitHub Actions). Until then the tests and the build run, the deploy
+# job is skipped, and the run says why in a notice. browser/README.md, "Publishing the hosted
+# demo", has the maintainer's steps.
+name: Hosted demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; one that has started is not cancelled half-way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Test and build the hosted demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - name: Install the browser runtime's locked dependencies
+        working-directory: browser
+        run: npm ci
+      - name: Type-check and run the browser runtime's tests
+        working-directory: browser
+        run: npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the Python package, for the toy game
+        run: |
+          python -m pip install -r requirements-lock.txt
+          python -m pip install --no-deps -e .
+      - name: Write the toy game (stand-in models, colored-shape cards, the example table)
+        run: python tests/test_browser_fixtures.py --demo "${RUNNER_TEMP}/toy"
+      - name: Build the hosted demo
+        working-directory: browser
+        run: npm run build:pages -- --games toy,one-piece --toy "${RUNNER_TEMP}/toy"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: browser/dist/pages
+
+  pages:
+    name: Are Pages set to deploy from GitHub Actions?
+    runs-on: ubuntu-latest
+    permissions:
+      pages: read
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Ask GitHub how this repository's Pages are published
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if build_type="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq .build_type 2>/dev/null)" && [ "${build_type}" = "workflow" ]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+            echo "GitHub Pages deploy from GitHub Actions: the hosted demo is deployed from main."
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice title=Hosted demo not deployed::GitHub Pages are not set to deploy from GitHub Actions in this repository (Settings, Pages, Source). The demo was tested and built, and nothing was deployed."
+          fi
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: [build, pages]
+    if: needs.pages.outputs.enabled == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

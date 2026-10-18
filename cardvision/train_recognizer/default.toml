@@ -1,0 +1,144 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The recognizer trainer's defaults, written out as a config file to copy and edit.
+#
+#     cardvision train-recognizer --config my-game.toml --out runs/recognizer
+#
+# Everything below except the paths and [epoch] base is what the trainer uses when a key is
+# left out (cardvision/train_recognizer/config.py explains each key, and a test keeps this file
+# equal to the defaults in the code). A relative path is resolved against this file's folder.
+
+seed = 0                    # weights, batch order, augmentation, per-epoch draws
+# data_seed = 0             # the validation split and the unseen sample; the seed when left out
+epochs = 34
+batch = 256
+workers = 4
+contract = "full128"
+
+[model]
+init = "imagenet"           # or "random", or a checkpoint to start from (see below)
+dim = 128
+# "imagenet" is the documented start: pretrained weights, downloaded on first use.
+# init may also name a recognizer checkpoint, for example one trained on another game:
+#     init = "runs/other-game/best.pt"        # a best.pt or last.pt of this trainer, or the
+#                                             # .safetensors file of "cardvision export recognizer"
+# Only the encoder's weights are taken from the file, and they must fit dim exactly. Whether
+# such a start does better than "imagenet" on your game has not been measured here: train
+# both, and compare them on recordings held out from both.
+
+[optimizer]
+lr = 3e-4
+weight_decay = 1e-4
+warmup_epochs = 3
+
+[loss]
+arcface_scale = 32.0
+arcface_margin = 0.2
+arcface_weight = 1.0
+contrastive_temperature = 0.07
+contrastive_weight = 0.5
+negative_weight = 1.0
+negative_margin = 0.55
+back_weight = 4.0
+back_margin = 0.50
+back_labels = ["back"]
+bank_refresh_steps = 50
+
+[data]
+catalog = "catalog.json"            # required
+art = "art"                             # required: the folder of card images
+# kinds = "kinds.json"                  # in place of the catalog's "kinds"
+# manifests = ["labels.manifest.jsonl"] # label manifests, with
+# frames = "frames"                     #   the folder written by: cardvision fetch
+# sources = "sources.json"              # the game's sources file (the hand-row rule)
+# composites = "composites"             # written by: cardvision make-composites
+# textures = "textures"                 # written by: cardvision fetch-textures
+roles = ["train"]
+margin = 0.4
+extra_sources = []
+
+[background_patches]
+count = 256
+size = 320
+texture_share = 0.5
+# folder = "patches"          # your own patch images (size x size px, sorted by name) instead of generated ones
+
+[validation]
+group_share = 0.10          # recording groups held out whole (or name them: groups = [...])
+unseen_pick = 0             # how many cards to keep out of training (or name them: unseen_cards = [...])
+unseen_count = 400
+every = 5
+at_start = true
+log_unseen_every_epoch = false
+
+[epoch]
+base = 20000                # required: the number of rows that per_base sizes are multiples of
+
+[streams.art]
+chain = "physical"
+surface_margin = 0.4
+
+[streams.composite_positives]
+chain = "physical"
+# Which positive faces of a composite scene are cut into crops (all three must hold):
+min_visible = 0.90          # at least this share of the card is on top and inside the frame
+min_short_side = 48         # its short side is at least this many px
+max_tilt = 15.0             # it lies at most this many degrees from a quarter turn
+
+[streams.real_positives]
+chain = "plain"
+
+[streams.real_negatives]
+chain = "plain"
+negative = true
+
+[[segment]]
+stream = "art"
+per_base = 1.0
+draw = "balanced"
+
+[[segment]]
+stream = "composite_positives"
+per_base = 0.30
+draw = "subset"
+
+[[segment]]
+stream = "real_positives"
+share = 0.10
+draw = "balanced"
+
+[[segment]]
+streams = ["real_negatives"]
+share = 0.08
+draw = "balanced"
+
+[components]
+occluders = true
+glare = true
+low_light = true
+rotation = false
+printing_mask = true
+pairs = false               # needs [pairs] names: pairs of card names that are easily confused
+boost = false               # needs [boost] share_kind and share, or the catalog's kinds.boost
+
+# A pair is named by card name, so two different cards of one name cannot be asked for as a
+# pair under the catalog's "printing" identity rule.
+[pairs]
+per_batch = 4
+names = []
+
+[boost]
+alternate_printings = 1.0
+
+# The tags that keep the random streams apart: one per kind of per-epoch draw, and the offset
+# in the batch sampler's seed. Left out, as here, each is derived from its own name. State them
+# only to repeat, draw for draw, a run that was made with other tags. The numbers below show
+# the form (a whole number, or a list of them) and are not the defaults.
+# [seeds]
+# subset = 1
+# balanced = 2
+# negative = 3
+# per_class = [4, 1]
+# boost = [4, 2]
+# pairs = [4, 3]
+# sampler_offset = 5

@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Checks the label manifests under data/. Nothing here contacts a video platform: the
+# validator reads files and nothing else.
+#
+#   1. Every manifest, together: format, ranges, duplicates, groups, and no image in the folder.
+#   2. The example against the template catalog, the others against the Riftbound catalog.
+#   3. In a pull request: every row the pull request adds or changes is checked as an offer
+#      (--contribution): role "extra", trained_on false, no reachability check, and no row of
+#      a recording of the contributor's own (platform "local").
+#
+# Step 3 is skipped for a pull request labeled "roles-assigned", which is how the maintainer
+# gives accepted rows their roles and records whether their videos could be found. Its messages
+# number the rows among the added lines of each file, not among all the lines of the file.
+name: Manifests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install
+        run: |
+          python -m pip install -r requirements-lock.txt
+          python -m pip install --no-deps -e .
+      - name: Every manifest, together
+        run: cardvision validate-manifest data --sources games/riftbound/sources.json
+      - name: The example, against the template catalog
+        run: cardvision validate-manifest data/example.manifest.jsonl --catalog games/_template/catalog.json
+      - name: The Riftbound manifests, against the Riftbound catalog
+        run: |
+          set -eu
+          files=()
+          for file in data/*.manifest.jsonl; do
+            [ -f "$file" ] || continue
+            [ "$file" = "data/example.manifest.jsonl" ] && continue
+            files+=("$file")
+          done
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No manifest beside the example."
+            exit 0
+          fi
+          cardvision validate-manifest "${files[@]}" \
+            --catalog games/riftbound/catalog.json --sources games/riftbound/sources.json
+      - name: Rows added or changed by this pull request are offers
+        if: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'roles-assigned') }}
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eu
+          offered="$(mktemp -d)"
+          found=0
+          while IFS= read -r file; do
+            case "$file" in
+              data/example.manifest.jsonl) continue ;;
+              data/*.manifest.jsonl) ;;
+              *) continue ;;
+            esac
+            # The lines this pull request adds to the file: its new rows and its changed rows.
+            rows="$(git diff --unified=0 --no-color "$BASE...$HEAD" -- "$file" \
+              | grep '^+' | grep -v '^+++' | sed 's/^+//' | grep -v '^[[:space:]]*$' || true)"
+            if [ -n "$rows" ]; then
+              found=1
+              printf '%s\n' "$rows" > "$offered/$(basename "$file")"
+              echo "$file: $(printf '%s\n' "$rows" | wc -l | tr -d ' ') row(s) added or changed"
+            fi
+          done < <(git diff --name-only --diff-filter=AMR "$BASE...$HEAD" -- data)
+          if [ "$found" -eq 0 ]; then
+            echo "This pull request adds or changes no manifest row."
+            exit 0
+          fi
+          cardvision validate-manifest "$offered" \
+            --catalog games/riftbound/catalog.json --sources games/riftbound/sources.json --contribution

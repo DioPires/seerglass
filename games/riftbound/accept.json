@@ -1,0 +1,5 @@
+{
+ "tau": 0.62,
+ "delta": 0.05,
+ "rotationRetry": true
+}

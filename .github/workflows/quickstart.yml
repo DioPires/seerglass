@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The beginner path, run as the documents write it, on the two kinds of computer they cover
+# besides macOS: Linux, and Windows in Ubuntu under WSL 2 (README.md, "Which computer?").
+# tests/beginner_path.py reads the commands out of the "Paste this into the terminal" blocks of
+# README.md and browser/README.md: the quickstart's steps 1 to 4, the browser runtime's tests
+# and build, the demo's toy release and the demo server, whose page, toy release and toy table
+# it then fetches over HTTP. In WSL the repository is cloned into the Linux home first, as the
+# README says, Ubuntu is prepared with the README's own blocks, and the demo is also fetched
+# from Windows at the localhost address the README gives.
+#
+# Vampire/setup-wsl is pinned to the commit of its tag v7.2.0, since it is not GitHub's own.
+name: Quickstart
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Beginner path on Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run the beginner path as the documents write it
+        run: python3 tests/beginner_path.py
+
+  windows-wsl:
+    name: Beginner path on Windows, in Ubuntu under WSL 2
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: wsl-bash {0}
+    steps:
+      - uses: actions/checkout@v4
+      - id: wsl
+        continue-on-error: true
+        uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+          wsl-shell-user: beginner
+      - if: steps.wsl.outcome == 'failure'
+        uses: Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4 # v7.2.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: 2
+          wsl-shell-user: beginner
+      - name: Let the user run sudo, as the user Ubuntu asks for on its first start can
+        shell: wsl-bash -u root {0}
+        run: |
+          printf 'beginner ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/beginner
+          chmod 0440 /etc/sudoers.d/beginner
+      - name: Prepare Ubuntu with the README's blocks for Windows
+        run: |
+          cd "$(wslpath '${{ github.workspace }}')"
+          bash -e -c "$(python3 tests/beginner_path.py --print windows-packages)"
+          # Ubuntu opened again: its .bashrc loads nvm, but only in an interactive shell.
+          bash -c '. "$HOME/.nvm/nvm.sh" && '"$(python3 tests/beginner_path.py --print windows-node)"
+          bash -c '. "$HOME/.nvm/nvm.sh" && node --version && python3 --version'
+      - name: Clone the repository into the Linux home
+        run: |
+          git config --global --add safe.directory '*'
+          git init --quiet "$HOME/riftsight-vision"
+          cd "$HOME/riftsight-vision"
+          git fetch --quiet --depth=1 "$(wslpath '${{ github.workspace }}')" HEAD
+          git checkout --quiet --detach FETCH_HEAD
+          git log -1 --format='%H %s'
+      - name: Run the beginner path as the documents write it, and open the demo from Windows
+        run: |
+          cd "$HOME/riftsight-vision"
+          set +u
+          . "$HOME/.nvm/nvm.sh"
+          set -u
+          python3 tests/beginner_path.py --while-serving '
+            set -e
+            windows_curl=/mnt/c/Windows/System32/curl.exe
+            from_windows="${DEMO_URL/127.0.0.1/localhost}"
+            "$windows_curl" --fail --silent --show-error --max-time 30 "${from_windows}release/release.json" > /dev/null
+            echo "from Windows: ${from_windows} serves the toy release"
+            if "$windows_curl" --fail --silent --show-error --max-time 30 "${DEMO_URL}release/release.json" > /dev/null; then
+              echo "from Windows: ${DEMO_URL} serves it too"
+            else
+              echo "from Windows: ${DEMO_URL} does not answer"
+            fi'

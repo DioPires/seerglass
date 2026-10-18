@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The default recipe of "cardvision train-detector": fine-tune YOLOX-Nano from its public
+# COCO-pretrained weights on three streams that anyone can assemble. Every key is explained
+# in cardvision/train_detector/config.py; the values here are the trainer's defaults, written
+# out so that the file can be copied and changed.
+#
+# What you supply (paths are read relative to the directory the command is run from):
+#   real        a label manifest, and its frames from "cardvision fetch"
+#   composites  a folder from "cardvision make-composites"
+#   negatives   a folder of your own images that show no cards
+#
+# This is the released detector's recipe (games/riftbound/train-detector.toml) with one change.
+# That recipe drew 5 real, 2 negative, 4 composite and 5 extra-stream tiles per batch of 16,
+# and the extra stream is not public. Here its tiles are shared among the other three in
+# proportion: 5 : 2 : 4 scaled from 11 to 16 gives 7.3 : 2.9 : 5.8, rounded to 7, 3 and 6. The
+# mosaic shares 0.30 : 0.25 : 0.125 are likewise divided by their sum, 0.675, and rounded to
+# four places. Nothing else differs, but the starting weights do (the released detector did
+# not start from the COCO weights), and the result is not the released detector.
+
+seed = 1337
+steps = 500
+batch_size = 16
+store_width = 704
+
+# The weights to start from. Left out, as here, the start is the public COCO-pretrained
+# YOLOX-Nano checkpoint: that is the documented start. init may name a detector checkpoint in
+# its place, for example one trained on another game, or "random" for untrained weights:
+#     init = "runs/other-game/last.pth"   # a last.pth of this trainer, or the .safetensors
+#                                         # file of "cardvision export detector"
+# Only weights are read from the file. Whether such a start does better than the public
+# weights on your game has not been measured here: train both, and compare them on recordings
+# held out from both. --init on the command line takes this key's place.
+
+[streams.real]
+manifest = "data/riftbound-train.manifest.jsonl"
+frames = "frames/riftbound"
+roles = ["train"]
+# sources = "games/riftbound/sources.json"     # the game's sources file, for its hand-row setting
+aspect_range = [0.55, 0.90]
+
+[streams.composites]
+folder = "composites/train"
+
+[streams.negatives]
+folder = "negatives"
+
+[mix]
+# The first tile of each training image, by position in the batch of 16.
+primary = [
+    { stream = "real", tiles = 7 },
+    { stream = "negatives", tiles = 3 },
+    { stream = "composites", tiles = 6 },
+]
+# Where each of a mosaic's three further tiles comes from.
+mosaic_extra = [
+    { stream = "real", share = 0.4444 },
+    { stream = "composites", share = 0.3704 },
+    { stream = "negatives", share = 0.1852 },
+]
+
+[augment]
+mosaic = 0.5
+degrees = 10.0
+translate = 0.1
+scale = [0.5, 1.5]
+shear = 2.0
+flip = 0.5
+no_augment_share = 0.1
+max_targets = 200
+max_ignore = 480
+
+[optimizer]
+lr = 0.001
+momentum = 0.9
+weight_decay = 0.0005
+warmup_steps = 30
+final_lr_ratio = 0.05
+ema_decay = 0.9998
+
+[loss]
+ignore_overlap = 0.5
+
+[loader]
+workers = 4
+threads = 8
+salt = "tiles"

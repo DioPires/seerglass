@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The tests, in the environment requirements-lock.txt pins, on the oldest supported Python
+# and a newer one. In this environment the tests that need PyTorch are skipped. The check that
+# the Python package and the browser runtime agree is skipped here too, because npm ci is not
+# run in browser/; browser.yml runs that check and requires it. Some tests need the ffmpeg
+# program: one test of tests/test_data_extract.py, and the tests of
+# tests/test_data_frame_times.py that read a recording of variable frame rate. This workflow
+# installs ffmpeg so that they run; on a machine that has none they are skipped.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+      - name: Install the base lock
+        run: |
+          python -m pip install -r requirements-lock.txt
+          python -m pip install --no-deps -e .
+      - name: Run the tests
+        run: python -m pytest

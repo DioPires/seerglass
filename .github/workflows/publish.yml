@@ -1,0 +1,91 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Builds the package and uploads it to the Python package index. No password or token is
+# stored anywhere: the index trusts this workflow file in this repository ("trusted
+# publishing"), and each upload job runs in a named environment the maintainer can protect.
+#
+# It runs only by hand (Actions, Publish, Run workflow): publishing a release on GitHub uploads
+# nothing. Publishing to the index is not set up yet, and the package is not on it.
+#
+# - Target `testpypi` (the default) uploads to the index's test site, from the environment
+#   `testpypi`, as a rehearsal. Nothing reaches the real index that way.
+# - Target `pypi` uploads to the package index, from the environment `pypi`. Run it on the
+#   release's tag, which must be `v` followed by the version in pyproject.toml.
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Where to upload: testpypi (a rehearsal) or pypi"
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build the package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the source archive and the wheel
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          python -m twine check --strict dist/*
+      - name: The tag must match the package version
+        if: inputs.target == 'pypi'
+        run: |
+          version="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "The tag is ${GITHUB_REF_NAME}, but pyproject.toml says version ${version}." >&2
+            exit 1
+          fi
+      - name: The wheel installs and lists its commands
+        run: |
+          python -m venv /tmp/check
+          /tmp/check/bin/python -m pip install dist/*.whl
+          /tmp/check/bin/cardvision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  testpypi:
+    name: Upload to the test site (rehearsal)
+    if: inputs.target == 'testpypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: Upload to the package index
+    if: inputs.target == 'pypi' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

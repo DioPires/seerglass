@@ -1,0 +1,158 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card recognition demo</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+<header class="page-head">
+  <div>
+    <h1>Card recognition demo</h1>
+    <p class="lede">Drop a video or screenshot of a game, then hover a card to see its name. Nothing leaves this computer.</p>
+    <p id="hosted-note" class="lede" hidden></p>
+  </div>
+  <a class="quiet" href="score.html">Scoring page</a>
+</header>
+
+<main id="page" data-step="file">
+  <!-- The game picker, on a hosted build with games (scripts/pages.mjs; README.md, "The hosted demo"). The
+       page fills it in from its games; it stays hidden everywhere else. -->
+  <section id="games" class="games" aria-label="The game" hidden>
+    <fieldset id="game-choices" class="choices">
+      <legend>Choose a game</legend>
+    </fieldset>
+    <!-- The state line again, beside the choice that set it off: the one under the stage can be
+         below the fold while a model downloads. The line under the stage is the live region. -->
+    <p id="game-state" class="state game-state" data-tone="idle"><span id="game-state-mark" class="mark" aria-hidden="true"></span><span id="game-state-text"></span></p>
+    <div id="game-about" class="game-about">
+      <p id="game-source" class="quiet"></p>
+      <div id="game-notes" class="game-notes"></div>
+      <p id="game-credit" class="quiet" hidden><a id="game-credit-link" rel="noopener noreferrer"></a></p>
+      <div id="game-examples" class="examples" hidden></div>
+    </div>
+  </section>
+
+  <!-- The file step. The stage is the drop zone: choosing or dropping a file starts. -->
+  <section id="stage" class="stage" data-holds="drop" aria-label="The file">
+    <div id="dropzone" class="dropzone">
+      <p class="drop-title">Drop a video or image here</p>
+      <input id="file" class="behind" type="file" accept="video/*,image/*">
+      <label id="choose" class="button primary" for="file">Choose a file…</label>
+      <p id="file-problem" class="message problem" role="alert" hidden></p>
+      <p id="address-problem" class="message caution" role="alert" hidden></p>
+    </div>
+    <div id="picture" class="picture" hidden>
+      <video id="video" controls muted loop playsinline hidden></video>
+      <img id="image" alt="The file on show" hidden>
+      <canvas id="outlines"></canvas>
+      <p id="hint" class="hint" hidden>Move over a face-up card</p>
+    </div>
+    <p id="opening" class="opening" hidden></p>
+    <div id="box" hidden></div>
+    <div id="tooltip" hidden><img id="tooltip-art" alt="" hidden><div id="tooltip-name"></div><div id="tooltip-id"></div></div>
+  </section>
+
+  <div id="file-bar" class="bar" hidden>
+    <span id="file-name" class="file-name"></span>
+    <span id="file-note" class="quiet"></span>
+    <button id="change-file" class="button" type="button">Change file</button>
+    <label class="check"><input id="all-boxes" type="checkbox"> Show detected boxes</label>
+  </div>
+
+  <!-- The model. It leads the page only while no model is loaded; after that it is one line. -->
+  <section id="model" class="model" aria-label="The model">
+    <div id="model-intro" hidden>
+      <h2 id="model-intro-title">Load a model</h2>
+      <p id="model-intro-text">The demo needs a model before it can name a card. Give it the address of a release document.</p>
+    </div>
+    <p id="model-line" class="bar quiet">
+      <span id="model-text"></span>
+      <button id="change-model" class="link" type="button" aria-expanded="false" aria-controls="model-form">Change</button>
+    </p>
+    <p id="model-problem" class="message problem" role="alert" hidden></p>
+    <form id="model-form" class="field-row" autocomplete="off" hidden>
+      <label for="release-url">Release address</label>
+      <input id="release-url" type="text" placeholder="/release/release.json" spellcheck="false" required>
+      <button id="load-model" class="button" type="submit">Load</button>
+    </form>
+    <div id="model-command" hidden>
+      <p class="quiet">Or stop the server and start it with a release folder. The model then loads by itself:</p>
+      <pre class="command">npm run demo -- --release RELEASE-FOLDER</pre>
+    </div>
+  </section>
+
+  <p id="status" class="status">
+    <span id="state" class="state" data-tone="idle" role="status"><span id="state-mark" class="mark" aria-hidden="true"></span><span id="state-text"></span></span>
+    <span id="strip" class="quiet"></span>
+  </p>
+
+  <details id="options" class="disclosure">
+    <summary>Options</summary>
+    <div class="fields">
+      <label for="backend">Backend</label>
+      <select id="backend">
+        <option value="">as the release lists them</option>
+        <option value="webgpu">WebGPU only</option>
+        <option value="wasm">WebAssembly only</option>
+      </select>
+      <label id="image-label" for="image-base">Card images: folder or address</label>
+      <div id="image-field">
+        <input id="image-base" type="text" placeholder="none: names only" spellcheck="false">
+        <p id="image-note" class="quiet" hidden></p>
+      </div>
+      <span></span>
+      <label class="check"><input id="always-on" type="checkbox"> Analyze continuously, not only around the pointer</label>
+    </div>
+  </details>
+
+  <!-- Details: what the session reports, as a diagnostics view (details.ts decides what it
+       shows). The text panel the page has always printed is kept whole under Raw text: scripts
+       read the element panel, and Copy diagnostics copies its text. -->
+  <details id="details" class="disclosure">
+    <summary>Details</summary>
+    <div class="diagnostics">
+      <div class="diag-head">
+        <p id="diag-state" class="state" data-tone="idle"><span id="diag-mark" class="mark" aria-hidden="true"></span><span id="diag-text"></span></p>
+        <span id="copy-note" class="quiet" role="status"></span>
+        <button id="copy-diagnostics" class="button small" type="button">Copy diagnostics</button>
+      </div>
+      <dl id="tiles" class="tiles" hidden></dl>
+      <section id="detections" class="diag-section" aria-labelledby="detections-title" hidden>
+        <div class="diag-title">
+          <h3 id="detections-title">Detections in the newest frame</h3>
+          <p id="detections-caption" class="quiet"></p>
+        </div>
+        <p id="detections-empty" class="quiet" hidden></p>
+        <div class="table-scroll">
+          <table id="detection-table" class="data">
+            <thead><tr><th scope="col" class="num">#</th><th scope="col">Card</th><th scope="col">Id</th><th scope="col" class="num">Score</th><th scope="col" class="num">Margin</th><th scope="col">Result</th></tr></thead>
+            <tbody id="detection-rows"></tbody>
+          </table>
+        </div>
+      </section>
+      <div class="diag-groups">
+        <section id="model-group" class="diag-section" aria-labelledby="model-group-title" hidden>
+          <h3 id="model-group-title">Model</h3>
+          <dl id="model-facts" class="facts"></dl>
+        </section>
+        <section id="file-group" class="diag-section" aria-labelledby="file-group-title" hidden>
+          <h3 id="file-group-title">File</h3>
+          <dl id="file-facts" class="facts"></dl>
+        </section>
+      </div>
+      <details id="raw" class="raw">
+        <summary>Raw text</summary>
+        <pre id="panel"></pre>
+      </details>
+    </div>
+  </details>
+</main>
+
+<script type="module" src="demo.js"></script>
+</body>
+</html>

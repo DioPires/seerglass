@@ -1,0 +1,166 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Card labeler</title>
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sources.css">
+</head>
+<body>
+  <header id="top">
+    <div id="where">
+      <a id="projectLink" class="back" href="/project" title="Back to the project: its passes, and where its files are" aria-label="Back to the project"><span aria-hidden="true">←</span><span class="word"> Project</span></a>
+      <span id="passName"></span>
+      <select id="setSelect" title="The set: the frames of one video" aria-label="Set"></select>
+      <span id="modeBadge" class="badge"></span>
+    </div>
+    <div id="frameNav">
+      <button type="button" class="act" data-key="[" title="Previous frame"><span aria-hidden="true">‹</span><kbd>[</kbd></button>
+      <div id="frameStrip" hidden></div>
+      <button type="button" class="act" data-key="]" title="Next frame"><kbd>]</kbd><span aria-hidden="true">›</span></button>
+    </div>
+    <span id="frameInfo"></span>
+    <details id="frameMenu" class="menu">
+      <summary title="More for this frame" aria-label="More for this frame">⋯</summary>
+      <div class="menuBody">
+        <button type="button" class="act boxOnly centerOnly" data-key="Enter" data-mods="shift"><span>Reopen this frame</span><kbd>Shift+Enter</kbd></button>
+        <button type="button" class="act danger boxOnly" id="clearFrameBtn" title="Removes every box on this frame, after asking. Undo brings them back."><span>Clear every box on this frame…</span><kbd>Shift+X</kbd></button>
+        <button type="button" class="act danger" id="removeFrameBtn" data-act="remove-frame" title="Leaves this frame out of the project, after asking: it is skipped in every pass and in the export. Its labels are kept, and the project screen can restore it."><span>Remove this frame from the project…</span></button>
+        <p id="removeFrameWhy" class="muted" hidden></p>
+      </div>
+    </details>
+    <span id="progress" class="muted"></span>
+    <span id="frameIssue" class="issue" hidden></span>
+    <span class="grow"></span>
+    <span id="connState" class="pill" title="Whether the labeling server on this computer answers"></span>
+    <span id="saveState" class="pill" title="Whether every change is saved"></span>
+    <button type="button" id="helpBtn" title="Keys of this pass"><span>Keys</span><kbd>?</kbd></button>
+  </header>
+  <div id="guide" role="status" aria-live="polite"><span id="guideText"></span></div>
+  <div id="saveBanner" class="saveBanner" hidden></div>
+  <div id="banner" class="banner" hidden></div>
+  <main id="layout">
+    <section id="center">
+      <div id="keptBar" hidden>
+        <span id="keptText"></span>
+        <button type="button" class="act" data-key="x"><span>Clear the untouched ones</span><kbd>X</kbd></button>
+      </div>
+      <div id="pointStage" hidden>
+        <canvas id="zoomView"></canvas>
+        <div id="pointCaption" class="muted"></div>
+        <div id="verifyPanel" hidden></div>
+      </div>
+      <div id="cornerStage" hidden>
+        <canvas id="frameCanvas" tabindex="0"></canvas>
+        <canvas id="loupe" width="200" height="200" hidden></canvas>
+      </div>
+      <div id="legend" hidden></div>
+      <div id="notice" class="card" hidden></div>
+      <div id="finishCard" class="card" hidden></div>
+    </section>
+    <aside id="side">
+      <div id="overviewWrap"><h2>Whole frame</h2><canvas id="overview"></canvas></div>
+      <div id="eligWrap"><h2 id="eligTitle">Selected box, enlarged</h2><canvas id="eligView"></canvas></div>
+      <div id="panelHead">
+        <div id="panelStatus"></div>
+        <button type="button" id="primaryBtn" class="primary" hidden></button>
+        <div id="status" class="note"></div>
+      </div>
+      <div id="question" hidden></div>
+      <div id="names">
+        <div id="searchBox">
+          <div id="scopeTabs">
+            <button id="scopeDeck" type="button">Deck list</button>
+            <button id="scopeAll" type="button">All cards</button>
+          </div>
+          <input id="pickerInput" type="search" placeholder="Search by name or id" aria-label="Search cards by name or id" autocomplete="off">
+          <div id="filters">
+            <div id="kindChips" title="Show only the cards that match. T goes through the types."></div>
+            <div class="chip-row">
+              <button type="button" id="clearFiltersBtn" title="Show every card again">Clear filters <kbd>0</kbd></button>
+              <span id="filterNote" class="muted"></span>
+            </div>
+            <div class="muted filter-hint">Filters clear for each card.</div>
+          </div>
+        </div>
+        <div id="pickerSpecials"></div>
+        <div id="otherAnswers"></div>
+        <div id="pickerEmpty" class="muted" hidden></div>
+        <div id="pickerCount" class="muted" hidden></div>
+        <ol id="pickerList"></ol>
+        <div id="deckNote" class="muted"></div>
+      </div>
+      <div id="actions"></div>
+      <div id="newBoxRow" hidden><span id="newBoxText"></span> · <button type="button" id="newBoxChange" class="link" title="Set the size of a new box (Options)">Change</button></div>
+      <div id="inspector"></div>
+      <div id="printingEditor" hidden>
+        <label for="printingInput" class="muted">The id of the other printing on screen. Enter saves, Esc cancels, an empty field clears it.</label>
+        <input id="printingInput" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <details id="options">
+        <summary>Options</summary>
+        <div class="optList">
+          <label class="boxOnly" title="Ticking finishes the frame without going on. Shift+Enter reopens it."><input type="checkbox" id="confirmedToggle"> Frame done</label>
+          <label class="boxOnly" id="carryLabel"><input type="checkbox" id="carryToggle"> Keep boxes from the previous frame</label>
+          <label class="boxOnly" title="A click on a card places a box of the new-box size, fitted to the card's edges."><input type="checkbox" id="snapToggle"> Snap to card edges <kbd>F</kbd></label>
+          <label class="boxOnly" title="Shows every box of the set one at a time, enlarged, to check which edge is the card's top."><input type="checkbox" id="reviewToggle"> Check top edges <kbd>V</kbd></label>
+          <label class="boxOnly" title="The check of top edges also shows card backs and ignored boxes, last on each frame."><input type="checkbox" id="reviewIgnoreToggle"> Include backs and ignored boxes</label>
+          <label class="boxOnly" title="The Boxes pass draws boxes only: the list of names is hidden, and names come in the Names pass."><input type="checkbox" id="boxesOnlyToggle"> Hide names (box pass)</label>
+          <label class="verifyOnly" title="Card backs are shown too, after the faces of each frame, to check that they are backs."><input type="checkbox" id="verifyBacksToggle"> Include card backs</label>
+          <label class="namesOnly" title="Each card starts with the search box in use, so typing searches at once. The letter keys then type: Esc leaves the search first."><input type="checkbox" id="searchFirstToggle"> Start each card in the search box</label>
+          <label title="Pointing at a named box shows its card."><input type="checkbox" id="hoverToggle"> Card previews <kbd>P</kbd></label>
+        </div>
+        <details id="defaultBox" hidden>
+          <summary>New-box size <span id="defaultBoxSize" class="muted"></span></summary>
+          <div class="dbRow">
+            <label>W <input id="defaultBoxW" type="number" min="3" step="1"></label>
+            <label>H <input id="defaultBoxH" type="number" min="3" step="1"></label>
+            <button type="button" id="defaultFromSel" title="A new box takes the selected box's size">Use the selected box <kbd>S</kbd></button>
+            <button type="button" id="defaultToSel" title="The selected box takes the new-box size; its center and angle stay">Apply to the selected box <kbd>Shift+S</kbd></button>
+          </div>
+          <div id="defaultBoxStage"><div id="defaultBoxSwatch"></div></div>
+          <div id="defaultBoxHint" class="muted"></div>
+        </details>
+      </details>
+      <details id="recording">
+        <summary>About this recording <span id="recState" class="muted"></span><span id="recSource" hidden></span></summary>
+        <form id="recForm"></form>
+      </details>
+    </aside>
+  </main>
+  <div id="keys" class="overlay" hidden>
+    <div class="sheet" role="dialog" aria-label="Keys of this pass">
+      <div class="sheetHead"><h2 id="keysTitle">Keys</h2><button type="button" id="keysClose"><span>Close</span><kbd>Esc</kbd></button></div>
+      <div id="keyHelp"></div>
+    </div>
+  </div>
+  <div id="removeFrame" class="overlay" hidden>
+    <div class="sheet" id="removeSheet" role="dialog" aria-modal="true" aria-labelledby="removeTitle"></div>
+  </div>
+  <div id="frameModal" class="overlay" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="The whole frame">
+      <div class="sheetHead"><h2>The whole frame</h2><span class="muted">The wheel zooms, a drag moves it, Z steps</span><button type="button" id="frameModalClose"><span>Close</span><kbd>Esc</kbd></button></div>
+      <div id="frameModalView"><canvas id="frameModalCanvas"></canvas></div>
+    </div>
+  </div>
+  <div id="frameEnlarge" class="frame-enlarge" hidden><canvas id="frameEnlargeCanvas"></canvas></div>
+  <div id="hoverPreview" class="hover-preview"><img id="hoverPreviewImg" alt=""><div id="hoverPreviewName" class="hp-name"></div><div id="hoverPreviewMeta" class="hp-meta"></div></div>
+  <script src="/snap.js"></script>
+  <script src="/quadsnap.js"></script>
+  <script src="/filters.js"></script>
+  <script src="/labeltools.js"></script>
+  <script src="/boxgeom.js"></script>
+  <script src="/boxsize.js"></script>
+  <script src="/picker.js"></script>
+  <script src="/names.js"></script>
+  <script src="/timinglog.js"></script>
+  <script src="/centergeom.js"></script>
+  <script src="/verifycore.js"></script>
+  <script src="/uistate.js"></script>
+  <script src="/keyroute.js"></script>
+  <script src="/savegate.js"></script>
+  <script src="/sources.js"></script>
+</body>
+</html>

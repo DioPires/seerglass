@@ -1,0 +1,159 @@
+{
+  "game": "toy",
+  "locale": "en",
+  "cards": [
+    {
+      "id": "TOY-001",
+      "name": "Amber Circle",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-001.png"
+    },
+    {
+      "id": "TOY-002",
+      "name": "Azure Square",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-002.png"
+    },
+    {
+      "id": "TOY-003",
+      "name": "Coral Triangle",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-003.png"
+    },
+    {
+      "id": "TOY-004",
+      "name": "Jade Diamond",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-004.png"
+    },
+    {
+      "id": "TOY-005",
+      "name": "Plum Stripes",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-005.png"
+    },
+    {
+      "id": "TOY-006",
+      "name": "Slate Ring",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-006.png"
+    },
+    {
+      "id": "TOY-007",
+      "name": "Azure Circle",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-007.png"
+    },
+    {
+      "id": "TOY-008",
+      "name": "Coral Square",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-008.png"
+    },
+    {
+      "id": "TOY-009",
+      "name": "Jade Triangle",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-009.png"
+    },
+    {
+      "id": "TOY-010",
+      "name": "Plum Diamond",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-010.png"
+    },
+    {
+      "id": "TOY-011",
+      "name": "Slate Stripes",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-011.png"
+    },
+    {
+      "id": "TOY-012",
+      "name": "Amber Ring",
+      "kind": "unit",
+      "printingOf": null,
+      "art": "TOY-012.png"
+    },
+    {
+      "id": "TOY-013",
+      "name": "Coral Circle",
+      "kind": "spell",
+      "printingOf": null,
+      "art": "TOY-013.png"
+    },
+    {
+      "id": "TOY-014",
+      "name": "Jade Square",
+      "kind": "spell",
+      "printingOf": null,
+      "art": "TOY-014.png"
+    },
+    {
+      "id": "TOY-015",
+      "name": "Plum Triangle",
+      "kind": "spell",
+      "printingOf": null,
+      "art": "TOY-015.png"
+    },
+    {
+      "id": "TOY-016",
+      "name": "Slate Diamond",
+      "kind": "spell",
+      "printingOf": null,
+      "art": "TOY-016.png"
+    },
+    {
+      "id": "TOY-017",
+      "name": "Amber Stripes",
+      "kind": "site",
+      "printingOf": null,
+      "art": "TOY-017.png"
+    },
+    {
+      "id": "TOY-018",
+      "name": "Azure Ring",
+      "kind": "site",
+      "printingOf": null,
+      "art": "TOY-018.png"
+    },
+    {
+      "id": "TOY-003A",
+      "name": "Coral Triangle",
+      "kind": "unit",
+      "printingOf": "TOY-003",
+      "art": "TOY-003A.png"
+    },
+    {
+      "id": "TOY-P01",
+      "name": "Plum Diamond",
+      "kind": "unit",
+      "printingOf": "TOY-010",
+      "art": "TOY-P01.png"
+    }
+  ],
+  "kinds": {
+    "landscape": [
+      "site"
+    ],
+    "foilProbability": {
+      "unit": 0.1,
+      "spell": 0.0
+    },
+    "boost": {
+      "shareKind": "site",
+      "share": 0.1
+    }
+  }
+}

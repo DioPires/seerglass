@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The browser runtime under browser/: its own tests, its build, and the check that it and the
+# Python package give the same answers on the toy game (tests/test_browser_agreement.py), with
+# the fixtures both sides are pinned to (tests/test_browser_fixtures.py). No browser is started:
+# the TypeScript pipeline runs under Node, on ONNX Runtime Web's WebAssembly backend.
+name: Browser runtime
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    name: Tests, build and agreement with Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the browser runtime's locked dependencies
+        working-directory: browser
+        run: npm ci
+      - name: Type-check and run the browser runtime's tests
+        working-directory: browser
+        run: npm test
+      - name: Build
+        working-directory: browser
+        run: npm run build
+      - name: Install the Python package's base lock
+        run: |
+          python -m pip install -r requirements-lock.txt
+          python -m pip install --no-deps -e .
+      - name: Check that the browser runtime and the Python package agree
+        env:
+          CARDVISION_REQUIRE_BROWSER: "1"
+        run: python -m pytest tests/test_browser_fixtures.py tests/test_browser_agreement.py -ra

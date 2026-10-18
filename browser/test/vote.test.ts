@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: Apache-2.0
+// The geometric vote's reference voter against a naive count. The GPU voter is checked
+// against this one in a browser: `npm run test:webgpu` (scripts/webgpu-test.mjs).
+
+import { describe, expect, it } from "vitest";
+
+import { cpuVoter, DESCRIPTOR_BYTES, NO_DISTANCE, NO_ROW, type KnnResult } from "../src/geometric/vote.js";
+import { queriesFrom, randomDescriptors, tiedDescriptors } from "./vote-fixtures.js";
+
+/** The two nearest rows by sorting every row by (distance, row), bit by bit. */
+function naive(desc: Uint8Array, queries: Uint8Array): KnnResult {
+  const rows = desc.length / DESCRIPTOR_BYTES;
+  const q = queries.length / DESCRIPTOR_BYTES;
+  const out: KnnResult = {
+    best: new Uint32Array(q), second: new Uint32Array(q), dBest: new Uint16Array(q), dSecond: new Uint16Array(q),
+  };
+  for (let j = 0; j < q; j += 1) {
+    const ranked: [number, number][] = [];
+    for (let r = 0; r < rows; r += 1) {
+      let d = 0;
+      for (let b = 0; b < DESCRIPTOR_BYTES; b += 1) {
+        const x = desc[r * DESCRIPTOR_BYTES + b]! ^ queries[j * DESCRIPTOR_BYTES + b]!;
+        for (let bit = 0; bit < 8; bit += 1) d += (x >> bit) & 1;
+      }
+      ranked.push([d, r]);
+    }
+    ranked.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    out.best[j] = ranked[0]?.[1] ?? NO_ROW;
+    out.dBest[j] = ranked[0]?.[0] ?? NO_DISTANCE;
+    out.second[j] = ranked[1]?.[1] ?? NO_ROW;
+    out.dSecond[j] = ranked[1]?.[0] ?? NO_DISTANCE;
+  }
+  return out;
+}
+
+describe("cpuVoter", () => {
+  it("finds the two nearest rows of random descriptors", async () => {
+    const desc = randomDescriptors(3000, 1);
+    const queries = queriesFrom(desc, 60, 2);
+    expect(await cpuVoter(desc).knn2(queries)).toEqual(naive(desc, queries));
+  });
+
+  it("orders equal distances by the lower row", async () => {
+    for (const distinct of [1, 2, 5]) {
+      const desc = tiedDescriptors(800, distinct, 3 + distinct);
+      const queries = queriesFrom(desc, 80, 4 + distinct);
+      const got = await cpuVoter(desc).knn2(queries);
+      expect(got).toEqual(naive(desc, queries));
+      // Every row equal: the first two rows, at the same distance.
+      if (distinct === 1) {
+        expect([...got.best].every((r) => r === 0)).toBe(true);
+        expect([...got.second].every((r) => r === 1)).toBe(true);
+        expect(got.dSecond).toEqual(got.dBest);
+      }
+    }
+  });
+
+  it("gives the hand-checked answer of a tiny index", async () => {
+    const desc = new Uint8Array(4 * DESCRIPTOR_BYTES);
+    desc[0 * 32] = 0b1111; // row 0: 4 bits from zero
+    desc[1 * 32] = 0b0001; // row 1: 1 bit
+    desc[2 * 32 + 31] = 0b1000_0000; // row 2: 1 bit, the last of the descriptor
+    desc.fill(0xff, 3 * 32, 4 * 32); // row 3: 256 bits
+    const got = await cpuVoter(desc).knn2(new Uint8Array(32));
+    expect([got.best[0], got.dBest[0], got.second[0], got.dSecond[0]]).toEqual([1, 1, 2, 1]);
+    const far = await cpuVoter(desc).knn2(new Uint8Array(32).fill(0xff));
+    expect([far.best[0], far.dBest[0], far.second[0], far.dSecond[0]]).toEqual([3, 0, 0, 252]);
+  });
+
+  it("says when there is no second row, or no row", async () => {
+    const one = await cpuVoter(randomDescriptors(1, 9)).knn2(randomDescriptors(2, 10));
+    expect([...one.best]).toEqual([0, 0]);
+    expect([...one.second]).toEqual([NO_ROW, NO_ROW]);
+    expect([...one.dSecond]).toEqual([NO_DISTANCE, NO_DISTANCE]);
+    const none = await cpuVoter(new Uint8Array(0)).knn2(randomDescriptors(1, 11));
+    expect([none.best[0], none.dBest[0]]).toEqual([NO_ROW, NO_DISTANCE]);
+    expect((await cpuVoter(randomDescriptors(4, 12)).knn2(new Uint8Array(0))).best.length).toBe(0);
+  });
+
+  it("reads descriptors at any byte offset", async () => {
+    const desc = randomDescriptors(200, 13);
+    const queries = queriesFrom(desc, 20, 14);
+    const shifted = new Uint8Array(desc.length + 3);
+    shifted.set(desc, 3);
+    const shiftedQueries = new Uint8Array(queries.length + 1);
+    shiftedQueries.set(queries, 1);
+    expect(await cpuVoter(shifted.subarray(3)).knn2(shiftedQueries.subarray(1))).toEqual(naive(desc, queries));
+  });
+
+  it("refuses a length that is not whole descriptors", async () => {
+    expect(() => cpuVoter(new Uint8Array(33))).toThrow(/32-byte/);
+    await expect(cpuVoter(new Uint8Array(32)).knn2(new Uint8Array(31))).rejects.toThrow(/32-byte/);
+  });
+});

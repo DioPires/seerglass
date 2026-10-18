@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+# The source archive carries the package, not the tests: they need helpers and fixtures from the
+# whole repository, which the archive does not hold. Run the tests from a clone.
+prune tests

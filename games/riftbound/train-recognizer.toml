@@ -1,0 +1,261 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The recognizer's training recipe for Riftbound.
+#
+#     cardvision train-recognizer --config games/riftbound/train-recognizer.toml --out runs/recognizer
+#
+# Every key is explained in cardvision/train_recognizer/config.py. The hyper-parameters, the
+# loss, the augmentation components, the number of epochs and the validation grid below are
+# those of the released recognizer.
+#
+# What differs from the released training is the data. The released weights were trained with
+# extra streams that are not public, and the checkpoint was selected on a validation set that
+# is not public (see the model card). Those streams enter through the plug-in hook; where one
+# belongs is shown below as a commented placeholder. With public data only, this file trains on
+# card images, generated composites and the public label manifests, and selects the checkpoint
+# on the two public validation sets. Expect a different result from the released weights.
+#
+# No card art, frame or video is in this repository. Point the five paths under [data] at your
+# own copies; a relative path is resolved against this file's folder.
+
+seed = 1337                 # weights, batch order, augmentation, per-epoch draws; the tags of the random
+                            # streams are the trainer's defaults (a [seeds] table would state others)
+data_seed = 1337            # the validation split and the sample of unseen crops
+epochs = 34
+batch = 256
+workers = 13                # loader processes; the result does not depend on it
+contract = "full128"
+
+[model]
+init = "imagenet"           # torchvision's ImageNet-1k weights for MobileNetV3-Small
+dim = 128
+
+[optimizer]
+lr = 3e-4
+weight_decay = 1e-4
+warmup_epochs = 3           # then half a cosine down to zero at the last step
+
+[loss]
+arcface_scale = 32.0
+arcface_margin = 0.2
+arcface_weight = 1.0
+contrastive_temperature = 0.07
+contrastive_weight = 0.5
+negative_weight = 1.0
+negative_margin = 0.55      # a negative's best match to a clean card image must stay below this
+back_weight = 4.0           # card backs weigh four times as much
+back_margin = 0.50          # and must stay lower
+back_labels = ["back"]
+bank_refresh_steps = 50
+
+[data]
+catalog = "catalog.json"                           # its "kinds" block holds the kind settings
+art = "../../local/riftbound/art"                      # card images named <card id>.webp
+manifests = ["../../data/riftbound-train.manifest.jsonl"]    # label manifests
+sources = "sources.json"                               # names the client whose hand row is cut off
+frames = "../../local/riftbound/frames"                # written by: cardvision fetch
+composites = "../../local/riftbound/composites"        # written by: cardvision make-composites
+textures = "../../local/textures"                      # written by: cardvision fetch-textures (optional)
+roles = ["train"]
+margin = 0.4                # room around a card in a cut crop, per side
+# extra_sources = ["your_package.streams:load"]        # the plug-in hook; see the placeholders below
+
+[background_patches]
+count = 256
+size = 320
+texture_share = 0.5
+# folder = "patches"          # your own patch images (size x size px, sorted by name) instead of generated ones
+
+[validation]
+group_share = 0.10          # recording groups held out whole; their real crops are the "seen" set
+# The 37 cards kept out of training altogether; composite crops of them are the "unseen" set.
+unseen_cards = [
+    "OGN-017", "OGN-057", "OGN-092", "OGN-097", "OGN-110", "OGN-129", "OGN-144", "OGN-156", "OGN-158", "OGN-196",
+    "OGN-217", "OGN-225", "OGN-229", "OGN-307",
+    "SFD-042", "SFD-047", "SFD-057", "SFD-102", "SFD-103", "SFD-108", "SFD-138", "SFD-142", "SFD-168", "SFD-171",
+    "SFD-228",
+    "UNL-067", "UNL-076", "UNL-085", "UNL-201", "UNL-211", "UNL-221",
+    "VEN-043", "VEN-044", "VEN-045", "VEN-049", "VEN-082", "VEN-164",
+]
+unseen_count = 400
+every = 5                   # scored after epochs 5, 10, ..., 30 and 34; the best is kept
+at_start = true
+log_unseen_every_epoch = true
+# source = "your_package.streams:validation"           # a plug-in may replace both validation sets
+
+[epoch]
+# The unit of the sizes below. In the released training it was the row count of the first
+# segment of the epoch: 113,704 crops from a private stream, covering 870 training cards,
+# every row once. An epoch of the released training, in rows:
+#
+#   crops from that private stream    113,704                                        55.49 %
+#   composite crops                   min(round(0.30 x 113,704) = 34,111,
+#                                     27,126 available) = 27,126                     13.24 %
+#                                     (the cut pool is 27,943; 817 are of the 37
+#                                     cards kept out of training)
+#   base so far                       113,704 + 27,126 = 140,830
+#   real labeled crops               round(0.1 / 0.9 x 140,830) = 15,648             7.64 %
+#   positives so far                  140,830 + 15,648 = 156,478
+#   negatives                         round(0.08 / 0.92 x 156,478) = 13,607
+#     real crops                      6,803                                           3.32 %
+#     from the private stream         6,804                                           3.32 %
+#   subtotal                          156,478 + 13,607 = 170,085
+#   a second private stream           96 rows of every card: 13,728                   6.70 %
+#   the boost (see [boost])           14,700                                          7.17 %
+#   pairs (see [pairs])               4 pairs in each of 800 batches, 2 rows a pair:
+#                                     6,400                                           3.12 %
+#
+# The later components add 13,728 + 14,700 + 2 x 3,200 = 34,828, so an epoch is
+# 170,085 + 34,828 = 204,913 rows, and the shares are of 204,913. The negatives rule is
+# F / (1 - F) of the rows so far, with F = 0.08. Shares are rounded to two decimal places and
+# nothing is adjusted: the eight rounded shares add to exactly 100.00 %. It ran as
+# 800 steps at batch 256 (204,913 / 256 = 800.4; a last, partial batch is dropped), for 34
+# epochs: 27,200 steps in all.
+base = 113704
+
+# How each stream's rows are treated. "physical": the physical chain (p 0.85) and the
+# background swap. In the released training those two ran on the extra positive streams and
+# the composites used the plain chain.
+[streams.art]
+chain = "physical"
+surface_margin = 0.4
+
+[streams.composite_positives]
+chain = "physical"
+
+[streams.real_positives]
+chain = "plain"
+
+[streams.real_negatives]
+chain = "plain"
+negative = true
+
+# [streams.extra_positives]
+# chain = "physical"
+#
+# [streams.extra_per_card]
+# chain = "physical"
+#
+# [streams.extra_negatives]
+# chain = "plain"
+# negative = true
+
+# The epoch, in order.
+#
+# In the released training the first segment was an extra stream, every row once, and "base"
+# was its number of rows:
+#
+# [[segment]]
+# stream = "extra_positives"
+# per_base = 1.0
+# draw = "all"
+
+[[segment]]
+stream = "art"              # public stand-in for the segment above
+per_base = 1.0
+draw = "balanced"
+
+[[segment]]
+stream = "composite_positives"
+per_base = 0.30
+draw = "subset"
+
+[[segment]]
+stream = "real_positives"
+share = 0.10
+draw = "balanced"
+
+[[segment]]
+streams = ["real_negatives"]    # released training: ["real_negatives", "extra_negatives"], half each
+share = 0.08
+draw = "balanced"
+
+# [[segment]]
+# stream = "extra_per_card"     # released training: 96 rows of every card of this stream
+# per_class = 96
+
+[components]
+occluders = true
+glare = true
+low_light = true
+rotation = false
+printing_mask = true
+pairs = true
+boost = true
+
+[pairs]
+per_batch = 4
+names = [
+    ["Sprite Fountain", "Runeblade Anvil"],
+    ["Runeblade Anvil", "Pickpocket"],
+    ["Pickpocket", "Gold"],
+    ["Amateur Demolitionist", "Pickpocket"],
+    ["Ruined Monastery", "Forgotten Library"],
+    ["Fury Rune", "Mind Rune"], ["Fury Rune", "Calm Rune"], ["Fury Rune", "Body Rune"],
+    ["Fury Rune", "Chaos Rune"], ["Fury Rune", "Order Rune"],
+    ["Mind Rune", "Calm Rune"], ["Mind Rune", "Body Rune"], ["Mind Rune", "Chaos Rune"],
+    ["Mind Rune", "Order Rune"],
+    ["Calm Rune", "Body Rune"], ["Calm Rune", "Chaos Rune"], ["Calm Rune", "Order Rune"],
+    ["Body Rune", "Chaos Rune"], ["Body Rune", "Order Rune"],
+    ["Chaos Rune", "Order Rune"],
+]
+
+[boost]
+alternate_printings = 1.0   # as many extra rows of alternate printings as they have anyway
+share_kind = "Battlefield"
+share = 0.081               # extra Battlefield rows until they are this share of the positives
+
+# The augmentation settings, written out. They are the defaults of cardvision/augment.
+[augment.physical]
+p_phys = 0.85
+strength = [0.0, 1.5]
+p_sleeve = 0.35
+sleeve_px = [2.0, 6.0]
+p_rot = 0.7
+rot_deg = 15.0
+p_glare = 0.3
+p_motion = 0.15
+motion_px = [3, 7]
+jpeg_p = 0.7
+jpeg_q = [30, 90]
+
+[augment.occluders]
+p = 0.35
+area_max = 0.35
+identity_cover_max = 0.40
+tries = 6
+
+[augment.occluders.types]
+card = 0.40
+fingers = 0.30
+disc = 0.20
+sleeve_edge = 0.10
+
+[augment.glare]
+p = 0.30
+streak_amp = [0.25, 0.70]
+bloom_amp = [0.30, 0.80]
+foil_mix = [0.05, 0.15]
+washout = [0.25, 0.55]
+identity_saturated_max = 0.25
+tries = 4
+
+[augment.glare.types]
+streak = 0.35
+bloom = 0.25
+foil = 0.25
+washout = 0.15
+
+[augment.low_light]
+p = 0.40
+gain = [0.45, 1.0]
+gamma = [0.8, 1.5]
+wb = 0.18
+tint = 0.05
+noise_base = [1.0, 4.0]
+chroma_share = 0.5
+identity_mean_min = 0.10
+
+[augment.rotation]
+p = 0.30
+abs_deg = [15.0, 45.0]

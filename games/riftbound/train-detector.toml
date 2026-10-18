@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# The recipe of the released Riftbound detector, as a config for "cardvision train-detector".
+# Every key is explained in cardvision/train_detector/config.py.
+#
+# THIS FILE IS INCOMPLETE ON PURPOSE. The released weights were trained with extra private
+# streams and started from an intermediate checkpoint (see the model card). Neither can be
+# published, so the stream's lines stand below as comments, each marked "extra stream".
+# Without them the mix fills 11 of the 16 places in a batch, and the trainer says so and stops.
+#
+#   * To train with public inputs only, use cardvision/train_detector/default.toml. It is this
+#     recipe with the extra stream's tiles shared among the three public streams, starting
+#     from the public COCO-pretrained weights.
+#   * To run this recipe whole, supply a stream of your own through "extra_sources" (the format
+#     is in cardvision/train_detector/sources.py), remove the "# " in front of the marked
+#     lines, and pass your starting checkpoint with --init.
+#
+# Paths are read relative to the directory the command is run from.
+
+# The released run in one paragraph: 500 steps of 16 training images; SGD with Nesterov
+# momentum; a warm-up to the peak learning rate, a cosine down to 0.05 of it at the start of
+# the closing phase, then held; in the closing phase (the last 10 % of the steps) no mosaic and
+# an L1 term in the box loss; an exponential moving average of the weights throughout. The
+# released weights are the averaged weights at the last step. No checkpoint was selected: no
+# step was picked as the best one.
+
+seed = 1337
+steps = 500
+batch_size = 16
+store_width = 704
+
+# extra_sources = ["your_package.your_module:your_function"]   # extra stream
+
+[streams.real]
+manifest = "data/riftbound-train.manifest.jsonl"
+frames = "frames/riftbound"                    # written by "cardvision fetch"
+roles = ["train"]
+trained_on = true                              # only the frames the released models saw
+sources = "games/riftbound/sources.json"       # names the client whose hand row is cut off
+aspect_range = [0.55, 0.90]
+
+[streams.composites]
+folder = "composites/train"                    # written by "cardvision make-composites"
+
+[streams.negatives]
+folder = "negatives"                           # your own card-free images
+
+# [streams.extra]                              # extra stream
+# degrade = 0.6                                # extra stream
+
+[mix]
+# The first tile of each training image, by position in the batch of 16.
+primary = [
+    { stream = "real", tiles = 5 },
+    { stream = "negatives", tiles = 2 },
+    { stream = "composites", tiles = 4 },
+    # { stream = "extra", tiles = 5 },         # extra stream
+]
+# Where each of a mosaic's three further tiles comes from.
+mosaic_extra = [
+    { stream = "real", share = 0.30 },
+    { stream = "composites", share = 0.25 },
+    { stream = "negatives", share = 0.125 },
+    # { stream = "extra", share = 0.325 },     # extra stream
+]
+
+[augment]
+mosaic = 0.5
+degrees = 10.0
+translate = 0.1
+scale = [0.5, 1.5]
+shear = 2.0
+flip = 0.5
+no_augment_share = 0.10      # the closing phase, the last 50 steps: no mosaic, L1 box loss on
+max_targets = 200
+max_ignore = 480
+
+[optimizer]                  # SGD with Nesterov momentum
+lr = 0.001                   # the peak learning rate
+momentum = 0.9
+weight_decay = 0.0005
+warmup_steps = 30            # the rise to the peak
+final_lr_ratio = 0.05        # the cosine reaches this share of the peak at the start of the
+                             # closing phase; the rate is then held
+ema_decay = 0.9998           # the averaged weights; those of the last step are what is exported
+
+[loss]
+ignore_overlap = 0.5
+
+[loader]
+workers = 13                 # a machine setting; the tiles do not depend on it
+threads = 8

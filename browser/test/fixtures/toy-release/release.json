@@ -1,0 +1,127 @@
+{
+ "schemaVersion": 1,
+ "kind": "vision-release",
+ "id": "aaa348512d466149",
+ "game": "toy",
+ "locale": "en",
+ "detector": {
+  "arm": "yolox",
+  "version": "toy-detector",
+  "path": "detector.onnx",
+  "sha256": "25cb69b9a2da377998d5e8da60e2d7f51e7a7a77e5ffa491c32c9aa7f73f8fa7",
+  "bytes": 141355,
+  "weights": "fp32",
+  "input": {
+   "width": 640,
+   "height": 384
+  },
+  "decode": {
+   "inputName": "images",
+   "outputName": "output",
+   "layout": "NCHW",
+   "channels": "BGR",
+   "scale": "0-255",
+   "letterbox": {
+    "width": 640,
+    "height": 384,
+    "pad": 114,
+    "anchor": "top-left",
+    "resize": "pillow-bilinear",
+    "ratio": "min(height / frameHeight, width / frameWidth)",
+    "size": "round(frame * ratio)"
+   },
+   "output": {
+    "anchors": 5040,
+    "columns": [
+     "cx",
+     "cy",
+     "w",
+     "h",
+     "obj",
+     "cls_face",
+     "cls_back"
+    ],
+    "boxes": "cx, cy, w, h in letterbox px (decoded in the graph); frame px = / ratio"
+   },
+   "classes": [
+    "face",
+    "back"
+   ],
+   "score": "obj * max(cls)",
+   "class": "argmax(cls)",
+   "threshold": 0.3,
+   "nms": {
+    "iou": 0.45,
+    "classAgnostic": true,
+    "greedy": true
+   },
+   "maxProposals": 80
+  },
+  "faceClass": 0,
+  "minCropPx": 24
+ },
+ "recognizer": {
+  "version": "toy-recognizer",
+  "path": "recognizer.onnx",
+  "sha256": "3d9c038a54481aaade13fe96fa5d57250a3b80a1df356ce8acf55ad6f26ac6ed",
+  "bytes": 98635,
+  "weights": "fp32",
+  "dim": 128,
+  "inputName": "crops",
+  "outputName": "embeddings",
+  "preprocessing": {
+   "id": "full128",
+   "size": 128,
+   "centerMask": false,
+   "poolVersion": 2,
+   "crop": "truncate"
+  }
+ },
+ "bank": {
+  "version": 1,
+  "path": "bank.json",
+  "sha256": "7bb9f8c008092779cf97e9d2867eba1a796a1fed6845455e06ac4003d51e475a",
+  "bytes": 8815,
+  "cardCount": 20,
+  "entryCount": 20,
+  "views": 16,
+  "aggregation": "mean"
+ },
+ "identity": {
+  "level": "name",
+  "groups": {
+   "version": 1,
+   "path": "bank.identity-groups.json",
+   "sha256": "e88337073fc4155d8ed932cdff92152b11c44d1a7ce92e3c6ca47cfb940c439b",
+   "bytes": 427
+  },
+  "display": "best-printing"
+ },
+ "catalog": {
+  "path": "catalog.json",
+  "sha256": "09064a5eeb2bc157c3450c8d6e8dcdaa7e0e095aea9996471f7ac6f0c0be10a7",
+  "bytes": 3087,
+  "cardCount": 20
+ },
+ "accept": {
+  "tau": 0.9,
+  "delta": 0.02,
+  "rotationRetry": true
+ },
+ "hover": {
+  "selection": "accepted-nms",
+  "maxAgeMs": 2000
+ },
+ "runtime": {
+  "ortWeb": "1.29.0",
+  "executionProviders": [
+   "webgpu",
+   "wasm"
+  ],
+  "wasmThreads": 1,
+  "analysisWidth": {
+   "min": 720,
+   "max": 1920
+  }
+ }
+}

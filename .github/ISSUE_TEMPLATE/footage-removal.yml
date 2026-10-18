@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Footage removal request
+description: You run a channel and want the label rows that point at your videos taken out.
+title: "Removal request"
+labels: ["removal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If you run a channel and want the rows that point at your videos removed from the label manifests, ask here. The rows are removed within 7 days. You do not need to give a reason.
+
+        If you would rather not ask in public, write to the contact in SUPPORT.md instead.
+
+        What a removal does: it takes the rows out of this repository and of any mirror this project runs. The labels were published under CC BY 4.0, which cannot be withdrawn from copies that others already made.
+
+        The manifests hold no frames and no video: only a video's id, a time, and the positions and names of the cards in that frame.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - YouTube
+        - Twitch
+    validations:
+      required: true
+  - type: textarea
+    id: videos
+    attributes:
+      label: Which videos
+      description: The video ids, one per line. Or write "every video of my channel" and name the channel.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: What to remove
+      options:
+        - The rows for the videos listed above
+        - Every row for my channel, now and in future
+    validations:
+      required: true
+  - type: checkboxes
+    id: mine
+    attributes:
+      label: Confirmation
+      options:
+        - label: I run the channel these videos are on, or I act for the person who does.
+          required: true

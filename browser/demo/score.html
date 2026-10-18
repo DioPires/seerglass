@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cardvision: score a video in this browser</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+<header class="page-head">
+  <div>
+    <h1>Score a video in this browser</h1>
+    <p class="lede">Finds each labeled frame of your manifests in your video files and records what would be shown
+    at each labeled position, as a file for the command-line scorer. Nothing leaves this computer. Keep this page
+    visible: a run pauses while it is hidden.</p>
+  </div>
+  <a class="quiet" href="./">Demo page</a>
+</header>
+
+<main>
+  <form id="controls" class="stack" autocomplete="off">
+    <ol class="steps">
+      <li>
+        <div>
+          <label class="name" for="release-url">Model</label>
+          <input id="release-url" type="text" placeholder="/release/release.json" spellcheck="false">
+          <p id="model-problem" class="message" role="alert" hidden></p>
+          <p class="quiet">The address of a release document. It is filled in when the server was started with a release folder.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <label class="name" for="manifests">Labels (manifest files)</label>
+          <input id="manifests" type="file" accept=".jsonl" multiple>
+          <p id="labels-problem" class="message" role="alert" hidden></p>
+          <p class="quiet">One or more label manifests, the <code>.manifest.jsonl</code> files.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <label class="name" for="videos">Videos</label>
+          <input id="videos" type="file" accept="video/*" multiple>
+          <p id="videos-problem" class="message" role="alert" hidden></p>
+          <p class="quiet">A video is found by its file name: the video id, or the platform, a hyphen and the video id.
+          A file that holds a section of a video adds a plus sign and its start in seconds.
+          Example: <code>local-table+2.webm</code> holds the video <code>table</code> of the platform <code>local</code>, from 2 seconds in.</p>
+        </div>
+      </li>
+    </ol>
+
+    <details id="options" class="disclosure">
+      <summary>Options</summary>
+      <div class="fields">
+        <label for="role">Role to score</label>
+        <select id="role">
+          <option value="evaluation" selected>evaluation</option>
+          <option value="train">train</option>
+          <option value="extra">extra</option>
+        </select>
+        <label for="backend">Backend</label>
+        <select id="backend">
+          <option value="">as the release lists them</option>
+          <option value="webgpu">WebGPU only</option>
+          <option value="wasm">WebAssembly only</option>
+        </select>
+        <label for="video-index">Index of kept video files</label>
+        <div>
+          <input id="video-index" type="file" accept=".json">
+          <p class="quiet">Optional: the <code>video-files.json</code> beside kept video files.</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="run-row">
+      <button id="start" class="button primary" type="submit">Start</button>
+      <p id="before" role="status"></p>
+    </div>
+  </form>
+
+  <p id="notice" class="message caution bare" role="status" hidden></p>
+
+  <section id="run" class="card" aria-label="The run" hidden>
+    <h2 id="run-title">Running</h2>
+    <progress id="progress" max="1" value="0"></progress>
+    <p id="run-line" role="status"></p>
+    <p id="run-problem" class="message problem" role="alert" hidden></p>
+    <div class="preview">
+      <video id="video" muted playsinline></video>
+      <p class="quiet">The video being read.</p>
+    </div>
+  </section>
+
+  <section id="result" class="card" aria-labelledby="result-title" hidden>
+    <h2 id="result-title"></h2>
+    <dl id="counts" class="counts"></dl>
+    <div id="result-notes"></div>
+    <p><a id="download" class="button primary" download="browser-events.jsonl" hidden>Download browser-events.jsonl</a></p>
+    <div id="score-it" class="copyable">
+      <p>Then score the file, at the top of the repository:</p>
+      <pre id="command" class="command"></pre>
+      <div>
+        <button id="copy" class="button" type="button">Copy</button>
+        <p class="quiet">Replace each part in capitals with a folder on your disk. The page is given the names of the files you choose, not their folders.</p>
+      </div>
+    </div>
+  </section>
+
+  <details id="details" class="disclosure">
+    <summary>Details</summary>
+    <pre id="panel">No run yet.</pre>
+  </details>
+</main>
+
+<script type="module" src="score.js"></script>
+</body>
+</html>

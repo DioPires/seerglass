@@ -1,0 +1,131 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* The start screen and the project screen. They load sources.css first and share its top bar,
+   instruction line, buttons and key caps; this file adds their own layout. Every color, spacing
+   and corner radius comes from theme.css. */
+#hub { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-5) var(--space-4) var(--space-7); background: var(--bg-deep); }
+#hub .col { width: min(860px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
+#hub h1 { margin: 0; font-size: 24px; color: var(--ink-strong); }
+#hub h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink-strong); }
+#hub p { margin: 0; line-height: 1.45; }
+#hub .lead { font-size: 15px; }
+#hub code, #hub pre, #hub .path { font-family: var(--font-mono); font-size: 12px; }
+#hub .path { color: var(--muted); overflow-wrap: anywhere; }
+#hub pre { margin: 0; padding: var(--space-2) var(--space-3); background: var(--bg-deep); border: 1px solid var(--border);
+  border-radius: var(--radius-md); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink-strong); }
+#hub mark { background: color-mix(in srgb, var(--warning) 25%, var(--bg-deep)); color: var(--warning); border-radius: var(--radius-xs);
+  padding: 0 var(--space-1); }
+.panel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--panel);
+  border: 1px solid var(--border); border-radius: var(--radius-xl); }
+.panel.main { border-color: var(--border-strong); background: var(--raised); }
+.panel .row { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.panel button.primary { width: auto; flex: 0 1 auto; gap: var(--space-4); }
+.warn { padding: var(--space-2) var(--space-3); border: 1px solid var(--warning); border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 12%, var(--panel)); color: var(--ink-strong); overflow-wrap: anywhere; }
+.warn::before { content: "! "; color: var(--warning); font-weight: 700; }
+.bad { color: var(--warning); }
+.good { color: var(--success); }
+.quiet { color: var(--muted); }
+
+/* a list of samples: name, where, how big, one button */
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.rows li { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); background: var(--raised);
+  border: 1px solid var(--border); border-radius: var(--radius-md); }
+.rows li .what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.rows li .name { font-weight: 700; color: var(--ink-strong); }
+.rows li button { flex: 0 0 auto; }
+
+/* a path field with its button */
+.field { display: flex; gap: var(--space-2); align-items: center; }
+.field input { flex: 1; min-width: 0; min-height: 34px; font-family: var(--font-mono); font-size: 12px; }
+.field input:focus { border-color: var(--accent); outline: 2px solid var(--accent-strong); outline-offset: 0; }
+label.over { font-weight: 600; }
+
+/* the project's header */
+.head { flex-direction: row; align-items: flex-start; }
+.head .thumb { flex: 0 0 auto; width: 192px; height: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--frame-void); }
+.head .about { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+details > summary { cursor: pointer; color: var(--accent-soft); }
+details.panel { display: block; }
+details.panel[open] > * + * { margin-top: var(--space-3); }
+details[open] > summary { margin-bottom: var(--space-3); }
+.places { display: grid; grid-template-columns: 140px 1fr; gap: var(--space-3) var(--space-3); align-items: start; }
+.places .k { font-weight: 600; padding-top: var(--space-2); }
+.places .v { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.places input { width: 100%; min-height: 30px; font-family: var(--font-mono); font-size: 12px; }
+.places .state { font-size: 12px; color: var(--muted); }
+
+/* what the labels are for */
+fieldset { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.choice { display: grid; grid-template-columns: auto 1fr; gap: 0 var(--space-2); align-items: baseline; padding: var(--space-2) var(--space-3);
+  background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--accent); }
+.choice:has(input:disabled) { cursor: default; color: var(--off); }
+.choice input { accent-color: var(--accent-strong); margin: 0; }
+.choice .label { font-weight: 700; color: var(--ink-strong); }
+.choice:has(input:disabled) .label { color: var(--off); }
+.choice .help { grid-column: 2; font-size: 13px; color: var(--muted); }
+
+/* the passes, in order */
+.passes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.pass { display: grid; grid-template-columns: 28px 1fr auto; gap: var(--space-1) var(--space-3); align-items: start; padding: var(--space-3);
+  background: var(--raised); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.pass.next { border-color: var(--accent); }
+.pass .num { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong); color: var(--accent-soft); font-weight: 700; font-size: 13px; }
+.pass .body { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.pass .title { display: flex; gap: var(--space-3); align-items: baseline; flex-wrap: wrap; }
+.pass .name { font-weight: 700; font-size: 15px; color: var(--ink-strong); }
+.pass .status { font-size: 13px; color: var(--accent-soft); }
+.pass .status.done { color: var(--success); }
+.pass .meaning { color: var(--muted); font-size: 13px; }
+.pass .reason { font-size: 13px; color: var(--warning); overflow-wrap: anywhere; }
+.pass .do { display: flex; }
+.pass .do button { min-width: 108px; min-height: 36px; font-weight: 600; }
+.pass .do button.primary { width: auto; }
+.pass .more { grid-column: 2 / -1; display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); }
+.pass .more .small { font-size: 12px; color: var(--muted); }
+.pass .more .small pre, #hub .small pre { font-size: 11px; color: var(--muted); padding: var(--space-1) var(--space-2); }
+.pass label.opt { display: flex; gap: var(--space-2); align-items: baseline; font-size: 13px; cursor: pointer; }
+.pass label.opt.disabled { color: var(--off); cursor: default; }
+.cmd { display: flex; gap: var(--space-2); align-items: flex-start; }
+.cmd pre { flex: 1; min-width: 0; }
+.cmd button { flex: 0 0 auto; }
+.cmd button.primary { width: auto; }
+
+/* the start screen's three paths: side by side, the one shown below is marked */
+.paths { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+button.route { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: var(--space-2); min-height: 150px; padding: var(--space-4);
+  text-align: left; background: var(--panel); border: 2px solid var(--border); border-radius: var(--radius-xl); color: var(--ink); cursor: pointer; white-space: normal; }
+button.route:hover { border-color: var(--border-strong); }
+button.route.chosen { border-color: var(--accent); background: var(--raised); }
+button.route:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+button.route .step { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong); color: var(--accent-soft); font-weight: 700; font-size: 13px; }
+button.route .title { font-size: 16px; font-weight: 700; color: var(--ink-strong); }
+button.route .promise { font-size: 13px; color: var(--muted); line-height: 1.4; }
+button.route .fitsTag { margin-top: auto; font-size: 12px; color: var(--success); }
+.pathBody { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); border: 2px solid var(--accent); border-radius: var(--radius-xl); }
+
+/* what is missing, with the one step back and where the guide says more */
+.need { padding: var(--space-2) var(--space-3); border: 1px dashed var(--warning); border-radius: var(--radius-md); color: var(--ink-strong); overflow-wrap: anywhere; }
+a.guide { color: var(--accent-soft); white-space: nowrap; }
+.warn a.guide, .need a.guide { margin-left: var(--space-1); }
+
+/* the other measuring protocol, and the export's fields and answer */
+.protocols { display: flex; flex-direction: column; gap: var(--space-2); }
+#hub h3 { margin: var(--space-2) 0 0; font-size: 14px; color: var(--ink-strong); }
+.pass .form { display: flex; flex-direction: column; gap: var(--space-1); max-width: 520px; }
+.pass .form input, .pass .form select { min-height: 30px; }
+.pass .exportDone { padding: var(--space-2) var(--space-3); border: 1px solid var(--success); border-radius: var(--radius-md); overflow-wrap: anywhere; }
+.pass .warn ul { margin: var(--space-1) 0 0; padding-left: var(--space-4); }
+
+@media (max-width: 720px) {
+  .paths { grid-template-columns: 1fr; }
+  .head { flex-direction: column; }
+  .pass { grid-template-columns: 28px 1fr; }
+  .pass .do { grid-column: 2; }
+  .places { grid-template-columns: 1fr; }
+}
+/* the frames removed from the project, each with its Restore button */
+ul.removed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+ul.removed li { display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; }

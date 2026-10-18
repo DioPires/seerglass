@@ -1,0 +1,124 @@
+{
+ "schemaVersion": 1,
+ "kind": "embedding-bank",
+ "game": "toy",
+ "locale": "en",
+ "version": 1,
+ "model": "toy-recognizer",
+ "dim": 128,
+ "dtype": "fp16",
+ "preprocessing": {
+  "id": "full128",
+  "size": 128,
+  "centerMask": false,
+  "poolVersion": 2,
+  "crop": "truncate"
+ },
+ "centerMask": false,
+ "views": 16,
+ "aggregation": "mean",
+ "cardCount": 20,
+ "entryCount": 20,
+ "entries": [
+  {
+   "cardId": "TOY-001",
+   "vec": "xq0LLT0mfrIIpcmtUbAFLCKtKCl7LZEm8KYbJOQlIxuurzAnwK2zLQeomChfqAKsAK4Ipv+r6CQ7qgivBbDroWmmv6xkoNiuyK+OqIebGayULIWvGbKDqv6qo69CLYquEKyirWMsjq11IKIqMy76rmYmUC+KqUyuWSgSoPIwlq4uKXUrFSBWoUGwoKQkF+2oES5ppToo0xTnsLqx+450HzUtMq46MqIgD66qriinXqrLqmspObDHKqUz8K+9sagwx6P5rP+rGqljLImrQCFEqKUrO6yAqFAs/7BhKJCqup3dL0qmTK+zJocy5KidrD8sjCy+rXKvrzGoIJmvKLEcLw==",
+   "artV": "dfcf8ae82b4351d2"
+  },
+  {
+   "cardId": "TOY-002",
+   "vec": "FDAaINUjkqDIpgWwhy+ToJic9RbLHXSp86PbJLqr+rEwLgumsqidMXQr8y4bpN4vSDE6pfCrLTKJMa0yFC3poKEf7Jt0rbWqfa8DrhcjGbE3pIesQJ/xINamRyyzLEQtfCxoMOksvKoLMAInFS0MNOasqqSdKXcvGqltnuAsHjFBKGUhgCGsKQOigTC5LoskyagAqmimjStZp8sz5SoINIqtCqFKL44sMChqJ2Cp4x2xIO6oCa5JrhWslKXGLQEvYCqcqDsi6q41Jigp3aWRKuQsPqwPLsMuZSY+reOuAa7kqCUnIC2up9Oh2aMUplcr3TDqqoawwzD2rhywNKhQqg==",
+   "artV": "324e39e0bec95536"
+  },
+  {
+   "cardId": "TOY-003",
+   "vec": "JxlEpVEQ6LAyJtWn1q0jLWKuQa7rLhwm1a1IrQueBq88rJUomCffMRuoiKeRnj+w76wnrH+nHS09G3ouy67bp12sHKyGqFuw76oPrcssWKcqIAOtRrE5LdauKq1jL26vT6jAI3srPKxVMAgJ7ityrC8ozDAeoU0jBS73rSQwfaC3LH2iHy1+LYSlbKxZJYKoySein1YoiizkrsWuTy9crHwo2K5WNKkoSqjeFjEZ2at6p4ekpq9nMEcwE7DtrFyZxaysrg8ieqd9KICe8aYyrPYxCqTIrOou2rBNLomqI7CJLXumf7GXLBEx86g1r60o2jHPrU+oSzFbMGCwaq3oLg==",
+   "artV": "75ee98c2e493805a"
+  },
+  {
+   "cardId": "TOY-004",
+   "vec": "DSb/LZknOLIsqwyw46U0qkenc6Jrrl6jH6UCqfGqXa/JKvceyaiSMUIrfyyJLQ8mKy05rMekXDIJL/0ubiPNqpisZKsGqROxnbG4rpwrbq8mpUSxOKpGoSCs3qL0L/CldKW9KpYtyqzcLqEo4C6xMM2vgKftrSMtu52nnkwuQyUEKfyoNCsvIDevIylbLCWhyqKEp9Op3SursGgtfypRMxeu8qsgNG0npCfVq0+lp64Rqc+kwrCOrOouFqotpaYwoaDorOsdxq7bLtifCZmJpkwrtqfFKHYmwpVuqvuxX7D7LEIlM6x3KBYuW5jiqOMp9i3xJ7GyTjM5q0qvwq1lKg==",
+   "artV": "ccd5e26bef251b7f"
+  },
+  {
+   "cardId": "TOY-005",
+   "vec": "YTAbrxAgYSTXK1alYTDKJ6GrBKsRMAytIa+ZKGomCLG0JPOQQytCMbssNy40rW8s7SutrIatzC6iMEUzJa/yIz4eSilcsTCsNqCLqWGrdK+wKE4j3rDfKlKq2ynmLTiuuiykMJEt8KwkMWEksyziLnsryjC1LB0rFy8JqYctHTExrakmTinrLJ4slSqTLZ0q1KzbrYsY9C5iqgovuy0GLW0tmatWLzotUCPWKicdPSSCoUesWrAYK/YnWbHzK34mryrSrt8Z0qzNHeQj66xOKo0yXa4gI3gv0a1qKgiro60orCOpUiSUGsQs36QCr10rTTRErGwTbS/nLQOwg6iBFg==",
+   "artV": "57cae248d5c37d0e"
+  },
+  {
+   "cardId": "TOY-006",
+   "vec": "4SvsIcIl4K/pp/Cf1ibfpaSpNK81rzqq2K2iCTognrAOqKgoHiGUL7grUyVuLAefzCwTsKAoLDJSLegvLqKOqlSt0qmdq06wmrBTsAolIawDHS6wYrAnKeWt6KvVMG6ttaEILHos1J6ELlmpgB90LpGwBylJr6Evci30EWIv9C4XpcOmJaeuqEqwEa/iKCOj4am1ofWsjS97sREoTCsrMZCl/a5QNGQp2CArqnCi3KutrluqkLCpqgsvKqvknJUuYap7rT2iaLCbLgqjPqUEFrItaqWXKFwhraqNpcWyZ7DxLIuYIawgL2wvjSXxqg0q7TAWouat5jOYKIOvaai0KQ==",
+   "artV": "dad17803e86163ec"
+  },
+  {
+   "cardId": "TOY-007",
+   "vec": "aS8gKHomMqrlo6muai6SqdOlwp+aqG+nZqEdKRirfrEJLu2l8qrIMY0tlS93qAswDTH1qemrbzH1MMszKiyRqB+k06TcruqtkK7BqlwkybJsqWqvbiQeKDCkqSqoKMYs8SwLMKovD64MLxkjtytgM3KuD576nPUuZqPdoG8rpDF2qealYSrUKLGr5jCdLtUoQKucqyeo+SxQq3Uz8ylFM0+vtZQRL/4pcSwGKkQgHKgtH62rr7DnrJOp3qg9LoowAyo7qR4kQrDcHhIUqZfrKF4t7qnCLSwsDCenqp+tw66xp/Ip5CBVqvIldaIeoMYrty+Ypa6vLDB1rWGuYKhLqQ==",
+   "artV": "d16b2ac91d26ba6e"
+  },
+  {
+   "cardId": "TOY-008",
+   "vec": "xSJ6rLultat4LeIkIagzK7OsZpoyMtWi7qwlp0It46rmr08dMqgLLNKkgiXHrTmsRq+FqFyu/R39qDiqtbL3KTupqSUWrRioH6SypPOkj6pzLp8kD7PtphasLauaLcSwaaonkZwsEaykLRwoQS1UsKowBzKzKlCtxy5kpmMv+aoCqfws7yDtKPuhNKixKFyl4JbUqXEp2Sr0rUmxbSp4rlsybqxjMUAs9q2mplMJkqAgpIAVXq8uMFMx0bFcsNwpRKatrs+o0RUCoIKl9aoiH7gwEqycqDsuzLJ7L7Il8JaTKOqr26wIK8MxDSTtr3ArrDI6r34aWS6TMPStVa9wLg==",
+   "artV": "4bb77b0bc04f8d6e"
+  },
+  {
+   "cardId": "TOY-009",
+   "vec": "TCrgLBIoqLEGq2qwQJqsookZiqovruUZ+6jKqL6nqbAtIZEksaqEMYUpLp+hL5idEi11qBAl8jE2LgovhCfSqQmrxqxupjewuLL9sG4tzqnEos2xSaxWpHKvqafWMHmpUqWUKz0tXqf4LSMgvy1/MLmuFKX/rM0sMo6tmgwv9B2GLfapnSeZJ0SuTZ26KEWj4yQPqFesRCxpsCUsbSygMxSvEazNNMQr2Bxnqe+qj62CrF6kt6/8rdQsK57BEXAtgalgrGUiqK7WLjolVSW8qIUqBqiFKbIrWaETqamx27C+LjUj86mkLFcsHqIYquwk/S51lBeynzK+qM6vsq2wKA==",
+   "artV": "3f47a4c5a002ff01"
+  },
+  {
+   "cardId": "TOY-010",
+   "vec": "pCp0qagnQa6lkgCgQyxBJXCqha7XpXGrfaw1qVefvLBIJjMhYCrjMXArDykzJi2iryocr06oMDGLLBszQq3RpCit66ymrx6xQ60wrU4ghK9jo3qtPq9zLUmtKKclMGiunSn5Lh8s+aobMXujNyi0LqGssCxup6Etgi4LrCcvejDlpsOqTSnAKEiqIqVqLa2fiaw3qeeiTDCur14seC51Lv8flKwENGsm2CjkHk4ZjK/3pwyt6rFxKPUvebBdJEcskyI6ri8i1q5oKoqcBqyoI88xKaZGIMcn0qurmKCwOLHfJISg8K2FLTgw2J5srYQprTIGpEisYTIGLwawZJelKg==",
+   "artV": "b6a0ff623e8710b9"
+  },
+  {
+   "cardId": "TOY-011",
+   "vec": "XjDLHgIpwK6wIOStmSx8qUOsJZ2ILmmrhKx9Kn2km7CnHCak9ajZMXcs6C9EprIsjy14qyWsCzKuMZIwvqggoCwdmqMTsO2tKLBsrqMYgLDWKnCsLbB1pYGs/iWhL4yoFyVJL0wuxa07MOAmyy06MQigxCx3JmApvSmlJKIway1Cm9MpoigEKw6oPi7FLeMfcqW6rHOomStjrnsvOyx+MkWhEq1nMi4uqqAtpN6l8Ze8qL4cPrBDrHAs9K69ISkv0ylUrhuona/mK5wX8qedJM8vHa0pLGkvoKympiCw9awlKWyjvimcjuMuxKbhrRgtQTN1rHqwizL/qV+xkK0gIw==",
+   "artV": "6fdc8fd7a677faa1"
+  },
+  {
+   "cardId": "TOY-012",
+   "vec": "e6sgK7Yp7rGapmMY+q1BFiWt9qqbqPYVUasootEmJqQPsG4q76QvK9slg58rLGKtrquMrlYgWi7Zn92tmKyGpSmwN6lho0au2q/9rGUkQqW3LFWyobGHoLGtmK8GMB+w6qoWrGgsxqoEJEWkniQGqoWsYCzTrrOiiCwknSUxnaXWmjEqRamOqsqvQ7CWoe4dRCi2Eg+p8CWUsq+uRSKOLM8qALAZNJwqd6wbrv6kzK3tr2ahabCAJPkxla11rsIwYK7aq4qrwKslMHqoKaZKq58qT6CHpn+pt7BOJMGx+qxNL1ydFrCCL8MwnSHRqrAslyzeq/GsvTMoKkiwO67HLA==",
+   "artV": "2d853ca3ecf20633"
+  },
+  {
+   "cardId": "TOY-013",
+   "vec": "+aexqRglu65EKfyk5KaELtitwqYKMDqmRK1NJnAsRaucrjIo6pCHL5ykcyourjGpWKyQrK6uxiPjod8pxLEyGQylGKyrruWuKqpppEGqIrAYLO6sC7OJKJqq3q2/LNOwZyU4pIstea5ELccm/ym5rMQp3zGRnQGsby+GqfgwhSYRqYAoDyWFJNms6KMZKSAMOShEq2YpRywSsPSv/CiaqZIwHa17MZUkeKlZqTcbE6kcqe2lNLHbLwQzlrKyrrEuWCRorzapJ6yRIACqe6YlljYxl60PqsEtZrHnLGektKhAKnuqJbDwKO4ykahervgsQjFMrnSi/jB1L6ivd676Lg==",
+   "artV": "bec9a197be833cb2"
+  },
+  {
+   "cardId": "TOY-014",
+   "vec": "ASsdL4coLLEmrNKwniJYq++kxygyqdqcBhOxJJWs5K/RJyikCK6qMEEq4y3dKZAsAS/yoaah2jIDMHQqjyzapJGoRalHp6Ku+bIosDMsxq4hIXewfqoerKarTCIRMPMqW6UDLB0sF6otLSon3y76MAOv/qhDqZUsPaoaKKAvXye6LL8n8heXlbSvvSxXLOKmth5zoqirXyfwr/8vHShnNLiu46r4MqEqf6H4q3arQKtHqeghxq54sBgs0CTjpR8xuCDjqZenSK9QLicg/CClnOkhBqmMLTAsPKTirE2xwKwlLXAo5ycGJv8rMKLKqQMriC6LqVazmTLQsE6wF65GGw==",
+   "artV": "ba83a3abbd4dfd94"
+  },
+  {
+   "cardId": "TOY-015",
+   "vec": "LC4FqScn867yHyWm9SqiKeylILBIplWpc67Hqigf0LFHmU4lgyl+MaMoEZlUKaan0CnlrcQjDjH7LH0zk6t5qYGsGKy2rAOxAa2Zr/koaKmupZyulrAxLqquH6mfMDCtFiZ+Lh0tc6jEMEyogiykLUSryyzOpSMvai5krf8uci9gHdKr5SnKKVepZapqKrSd9KltqAaqNi4Urikr9C/YLXCgQq21NIUs+yWvKLGgJ64yqcWs4rCzJt8sAa62JoElNqlvrtYlZa3XKr0fa6kGIu0xYZyMptoszq1tIp6wrLFsKWCmXaz2LUUvjhwFrKInITPPoNCq4THpL32wV6aqKg==",
+   "artV": "679cec9ce40b9769"
+  },
+  {
+   "cardId": "TOY-016",
+   "vec": "HClQJvMmSrFYp9KrSybcpGWqXaxBrFOpFKsqqUKmiLBdKC0m8xzpMScsRSo5LDShBCwar32l9jHOLUAxlqd5qlGtBq0wrXWxOLCYrmQoPa+npCWwG67RKWut76dRMDStaiImLQgtQat9MMUdZSwPMBeulShnrH0t7SueqIsvfy26GAyqdSkfKL2tFKMnLeyiFamopkioYy++sFQsTC0nMbeoEa1iNEwnqyVoqOKia69sqd6quLE3pAowlq7mmY8uPh6orbIgvK5bLRWcOqkRnhowgqb7JXsnI6l3pc6xE7F+K8AfoK2mLDkwVBlUrK8pJDHwHFKwJzO4KZ+v7qgwLA==",
+   "artV": "243378c76747364a"
+  },
+  {
+   "cardId": "TOY-017",
+   "vec": "aq2hL5smWa+9pAOwHq8cGMesgi04Me6lSqExJR4hsCVlsNoWRbGeom8ifi2xppephLADJWioGCtNqvewX69FJKCqAJ+8KmqtQq9PKFKpl6h3LCyghbFUsNSmwKvgKLyqRa5TrcosfazSqREsNC9YsOonbC0yqVGx6Cq2KugsHrHvI+gtzKXcpQSyvCJ7pKmsKCb5qsenRqywrxqxDyhUqrsoVaXoMVYpRa12sMcnlal+pP0lRarkLWQz/6rcsrMxtB7crjCseKUdLS6q6al7pYEsGKcuH5ImKbEpLNGrki3BL18mZKjUpC8zrSUzq8ssAixhokKwbS2CqPut/rHIKg==",
+   "artV": "16273ffe14012999"
+  },
+  {
+   "cardId": "TOY-018",
+   "vec": "Mi/tkAQbca3qpIysWS3rqoWiya09sFesY6tNJPWiR7IxKfAiL6RFMFosZyxWKFgsUTCorfQk6DIrMOUyGSxErE+pBKoorMqv07DFrwMdXrAqq7auIK2MKjWpCyPmLhEktSUuLwQtJaA6MK2noiMSMjGx9qSgrS0xoigrIpUt2DDcqIuo7ZzGpmywbpllLEKmx6xhprusbjCGrh0wgSwAM+KuqahNMkwpGyzBm0UXtqEVq6irUa9yrukoZKTVKdYv4BZhrZwlvbDLKi0lH6b/JVYsdKnWLHQpKCjvpcewFrDqKM0pGaHFJ5QsPyY0os4pKTDvFS2wlDKeqDqtq6XMkw==",
+   "artV": "54035a02e01d8538"
+  },
+  {
+   "cardId": "TOY-003A",
+   "vec": "iK5Hrz+roSwQKiQzgKrMKDytn6ltnZKf06mpq4kp/i+csGwkBJuFsTwrOKt9JC6wj6wurjul1qwVsYGx5K+GLJqtFjAFqucuzyosleGwWCvyMBgsba4jIbSKRKVuHVSxyac6qJapCSbnrBiqYK3esXsqJTB6ot6s9y0rKA8gW62RrxYsYa3xsCmoqq/Np2Io1qF+JFCkOCKMrOCx/KYCrmUzMKqzqhOfQK0fpS2bsZ8nrEMhOas2MIYuca25rbckJ7Dmqdui8CoaIKOvQa4DmQEo3KVCqUKwfrH4IpqlIixaoemss6RlLzouny1PpacrMyoesGQy2SwqMmQkZiz6pg==",
+   "artV": "d2202a7729247768"
+  },
+  {
+   "cardId": "TOY-P01",
+   "vec": "DzBtsgqtVzFAKcUxjC0ELCcokLFRrrqoM7DUrQwqObGprPwSlywprekspK02KtysIy63r30rgyyrGsUwFiJ+qE+gxTCxqEoo/KIUsV+viy/zKNsw/a4dL3upvqKNLC6tWJ2MMK0lijALLF6sFaz5KIqoAy4lqhgxJy0XLJemmS4ErPGmja2xrv+ntrFtp/silarOp6Ssqi74nampyy1QJaEu1Kx3LeEsL6IRLMSi2i2aq2GqDKrFI46qwZ9DKTauNq93rPUriKXkHt2qOauaLhAwQ6krJXgo260AqISt263IokKvDy1wL24gpS2VJk4o9DLmpFMx3i+nMgOhcC06og==",
+   "artV": "d56fbb4caba4b6f1"
+  }
+ ]
+}

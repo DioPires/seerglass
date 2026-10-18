@@ -1,0 +1,15 @@
+{
+ "game": "your-game",
+ "locale": "en",
+ "facets": [
+  {"key": "color", "label": "Color", "values": ["Red", "Blue", "Green"]},
+  {"key": "cost", "label": "Cost", "type": "number"},
+  {"key": "set", "label": "Set"}
+ ],
+ "cards": [
+  {"id": "SET-001", "name": "First Example Card", "kind": "creature", "printingOf": null, "art": "SET-001.png",
+   "facets": {"color": ["Red", "Blue"], "cost": 3, "set": "SET"}},
+  {"id": "SET-002", "name": "Second Example Card", "kind": "spell", "printingOf": null, "art": "SET-002.png",
+   "facets": {"color": "Green", "cost": 1, "set": "SET"}}
+ ]
+}
