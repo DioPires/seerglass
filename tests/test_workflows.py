@@ -350,7 +350,7 @@ def test_the_pages_steps_write_the_toy_game_and_build_the_site_with_the_game_pic
 # ----------------------------------------------------------------------------- quickstart.yml
 QUICKSTART_LINUX = "Run the beginner path as the documents write it"
 QUICKSTART_WSL = ("Let the user run sudo, as the user Ubuntu asks for on its first start can",
-                  "Prepare Ubuntu with the README's blocks for Windows", "Clone the repository into the Linux home",
+                  "Prepare Ubuntu with the quickstart's blocks for Windows", "Clone the repository into the Linux home",
                   "Run the beginner path as the documents write it, and open the demo from Windows")
 SETUP_WSL = "Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4"
 
@@ -358,7 +358,7 @@ SETUP_WSL = "Vampire/setup-wsl@4c48163d9f981914dd8caa0fc335fe19cca5bff4"
 def test_the_quickstart_workflow_runs_the_documents_beginner_path_on_linux_and_in_wsl():
     """The commands are not in the workflow: ``tests/beginner_path.py`` reads them out of the
     documents (``tests/test_beginner_path.py``). The workflow runs it on Linux, and in Ubuntu
-    under WSL 2 on Windows after preparing Ubuntu with the README's own blocks."""
+    under WSL 2 on Windows after preparing Ubuntu with the quickstart's own blocks."""
     text = (WORKFLOWS / "quickstart.yml").read_text(encoding="utf-8")
     steps = steps_of("quickstart.yml")
     assert list(steps) == [QUICKSTART_LINUX, *QUICKSTART_WSL]
@@ -393,8 +393,8 @@ def test_the_quickstart_workflow_runs_the_documents_beginner_path_on_linux_and_i
     assert first.split("      - ", 1)[0] == second.split("      - ", 1)[0]
 
 
-def test_the_quickstart_workflow_s_windows_blocks_are_the_readme_s(tools):
-    """The step that prepares Ubuntu prints the README's blocks for Windows with the script; on
+def test_the_quickstart_workflow_s_windows_blocks_are_the_quickstart_s(tools):
+    """The step that prepares Ubuntu prints the quickstart's blocks for Windows with the script; on
     this computer the printing is run, not the blocks."""
     for name, expected in (("windows-packages", "sudo apt install --yes python3-venv git curl\n"),
                            ("windows-node", "nvm install --lts\n")):

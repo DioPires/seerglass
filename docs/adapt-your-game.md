@@ -133,17 +133,17 @@ manifests, without frames: `cardvision fetch` obtains the frames from the public
 ## Before you start
 
 Start by getting the code: step 0 of the
-[README's quickstart](../README.md#quickstart-on-a-toy-game) clones the repository, or
+[quickstart](quickstart.md) clones the repository, or
 downloads it as a ZIP. Run everything from the repository's root.
 The commands are written for a POSIX shell (macOS or Linux). On Windows, run them in Ubuntu
-under WSL: see "Which computer?" in the [README](../README.md#quickstart-on-a-toy-game).
+under WSL: see "Which computer?" in the [quickstart](quickstart.md).
 
 **What was checked where.**
 
 | Platform | What was checked |
 | --- | --- |
 | macOS | The commands on this page, run by hand (Apple M3 Max laptop) |
-| Linux, and Ubuntu under WSL 2 on Windows | The README's toy workflow, run in CI (`.github/workflows/quickstart.yml`) |
+| Linux, and Ubuntu under WSL 2 on Windows | The quickstart's toy workflow, run in CI (`.github/workflows/quickstart.yml`) |
 | GPU training | Exercised on a rented Linux machine with an NVIDIA RTX 4090 (tier 1). CUDA under WSL is not covered by this guide |
 | Windows, natively (PowerShell or Command Prompt) | Not supported |
 
@@ -188,8 +188,7 @@ fails" at the end). To start over from nothing, delete the whole folder with
 ask, so keep nothing in it that you have not saved elsewhere, such as your own catalog.
 
 **Draw the toy game and build stand-in models.** The released weights are release assets
-(the README's [Getting the released weights](../README.md#getting-the-released-weights) lists
-them). To check the commands without them, one script draws a toy game (20 cards made of
+([Getting the released weights](release-files.md) lists them). To check the commands without them, one script draws a toy game (20 cards made of
 colored shapes, with a catalog), builds two tiny stand-in models, and runs them on a test scene.
 Paste this into the terminal, from the repository's root:
 

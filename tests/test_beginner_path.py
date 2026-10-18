@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 import beginner_path
-from beginner_path import ACQUIRE, BLOCKS, MARKERS, PATH, WINDOWS, Problem, fenced_blocks, flat, path_script, read_block
+from beginner_path import ACQUIRE, BLOCKS, MARKERS, PATH, QUICKSTART as QUICKSTART_DOC, WINDOWS, Problem, fenced_blocks, flat, path_script, read_block
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -30,16 +30,52 @@ def test_every_block_is_found_where_the_pages_have_it():
     assert commands["windows-node"] == "nvm install --lts\n"
 
 
-def test_the_readme_says_how_to_get_the_code_and_the_path_does_not_run_it():
+def test_the_quickstart_says_how_to_get_the_code_and_the_path_does_not_run_it():
     """Step 0 clones the public repository and moves into it; the path starts in a checkout
     that exists already, so the block is checked, never run."""
     (block,) = ACQUIRE
     assert read_block(block) == "git clone https://github.com/ryangswe/riftsight-vision.git\ncd riftsight-vision\n"
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert readme.index("**0. Get the code.**") < readme.index("**1. Install.**")
-    assert "Download ZIP" in readme
+    quickstart = (ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8")
+    assert quickstart.index("**0. Get the code.**") < quickstart.index("**1. Install.**")
+    assert "Download ZIP" in quickstart
     script, server = path_script(ROOT, Path("STATE"))
     assert "git clone" not in script and "git clone" not in server
+
+
+def readme_quickstart(root: Path = ROOT) -> list[str]:
+    """The command lines of the README's short quickstart: its "Paste this" block."""
+    section = beginner_path.section_of((root / "README.md").read_text(encoding="utf-8"), "## Quickstart")
+    blocks = [block for before, block in fenced_blocks(section) if beginner_path.PASTE.search(flat(before))]
+    assert len(blocks) == 1
+    return [line for line in blocks[0].splitlines() if line.strip()]
+
+
+def in_order(lines: list[str], within: list[str]) -> bool:
+    rest = iter(within)
+    return all(line in rest for line in lines)
+
+
+def test_the_readme_quickstart_is_the_full_quickstart_s_commands_in_order():
+    """The README's short quickstart repeats steps 0 to 2 of docs/quickstart.md. Each of its
+    lines is a line of the get-code, install and toy blocks there, in the same order, so the
+    two copies cannot drift apart; and the line it says to expect is shown there too."""
+    full = [line for name in ("get-code", "install", "toy") for line in read_block(BLOCKS[name]).splitlines()]
+    short = readme_quickstart()
+    assert short[:2] == ["git clone https://github.com/ryangswe/riftsight-vision.git", "cd riftsight-vision"]
+    assert "python examples/toy_quickstart.py \"$WORK/toy\"" in short
+    assert in_order(short, full), [line for line in short if line not in full]
+    assert not in_order(list(reversed(short)), full)
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "`1 frame, 6 faces, 3 named`" in readme and (QUICKSTART_DOC, "1 frame, 6 faces, 3 named") in MARKERS
+
+
+def test_a_readme_quickstart_that_drifted_is_refused(tmp_path):
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    drifted = text.replace("python -m pip install --no-deps -e .", "python -m pip install -e .", 1)
+    assert drifted != text
+    (tmp_path / "README.md").write_text(drifted, encoding="utf-8")
+    full = [line for name in ("get-code", "install", "toy") for line in read_block(BLOCKS[name]).splitlines()]
+    assert not in_order(readme_quickstart(tmp_path), full)
 
 
 def test_the_path_script_runs_every_block_from_the_root_and_leaves_the_server_for_last(tmp_path):
@@ -49,7 +85,7 @@ def test_the_path_script_runs_every_block_from_the_root_and_leaves_the_server_fo
         assert f"# ---- {block.name}: " in script
     assert script.count('cd "$BEGINNER_ROOT"') == len(PATH)
     assert server.startswith("npm run demo -- ") and server not in script
-    # The README's blocks for Windows are not part of the path.
+    # The quickstart's blocks for Windows are not part of the path.
     without_root = script.replace(str(ROOT), "")
     assert "nvm " not in without_root and "apt " not in without_root
 

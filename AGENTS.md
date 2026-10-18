@@ -61,7 +61,7 @@ command and its full output. Do not edit the package to get past a step.
 
 ## Set-up
 
-Run every command from the repository's root, in a POSIX shell: macOS or Linux, or Ubuntu under WSL 2 on Windows (README, "Which computer?"). A native Windows shell such as PowerShell is not covered.
+Run every command from the repository's root, in a POSIX shell: macOS or Linux, or Ubuntu under WSL 2 on Windows (docs/quickstart.md, "Which computer?"). A native Windows shell such as PowerShell is not covered.
 
 ### S1. Install
 
@@ -99,10 +99,10 @@ echo "$WORK"
 
 ### S3. The toy game and stand-in models
 
-The released weights are release assets of v0.1.0: README.md, "Getting the released
-weights", lists each file with its address and SHA-256. If the person has given you those
-files, use them wherever a command takes `--detector` and `--recognizer`. The toy game and two
-stand-in models let you check every command without them:
+The released weights are release assets of v0.1.0: docs/release-files.md, "Getting the released
+weights", lists each file with its address and SHA-256. If the person has given you those files,
+use them wherever a command takes `--detector` and `--recognizer`. The toy game and two stand-in
+models let you check every command without them:
 
 ```
 python examples/toy_quickstart.py "$WORK/toy"

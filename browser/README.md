@@ -21,7 +21,7 @@ document and the files it pins, as `cardvision build-release` writes them) and a
 ## Run it
 
 Node 22 or later. On Windows, everything here runs in Ubuntu under WSL: see "Which computer?"
-in the [main README](../README.md#quickstart-on-a-toy-game). Everything below is run in this
+in the [quickstart](../docs/quickstart.md). Everything below is run in this
 folder (`browser/`), unless a step says otherwise. A block after "Paste this into the terminal"
 holds commands to copy and paste whole; a block after "You should see something like" is what
 they print, which you do not type.
@@ -71,10 +71,10 @@ bundles with esbuild into `dist/`, which is not kept in the repository:
 The demo needs a release folder. To try it without trained models, the test suite can write a
 toy one into a work folder, `cardvision-toy` in your Downloads folder. It is outside the
 repository on purpose, because the repository must hold no images and no model files, and you
-can delete it when you are done. It is the same folder as the quickstart of the main README.
+can delete it when you are done. It is the same folder as the [quickstart](../docs/quickstart.md)'s.
 
-**1. Write the toy release.** This needs the Python environment of the main README's
-quickstart (its step 1, Install). From the repository's root (if you are in `browser/`, run
+**1. Write the toy release.** This needs the Python environment of the
+[quickstart](../docs/quickstart.md) (its step 1, Install). From the repository's root (if you are in `browser/`, run
 `cd ..` first), paste this into the terminal:
 
 ```

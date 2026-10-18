@@ -2,8 +2,8 @@
 """The beginner path, run as the documents write it.
 
 The commands are not copied here: they are read out of the "Paste this into the terminal"
-blocks of ``README.md`` and ``browser/README.md`` each time, so that a page and this run cannot
-drift apart. The path is the README's quickstart steps 1 to 4, the browser runtime's tests and
+blocks of ``docs/quickstart.md`` and ``browser/README.md`` each time, so that a page and this run
+cannot drift apart. The path is the quickstart's steps 1 to 4, the browser runtime's tests and
 build ("In a browser"), the demo's toy release and the demo server ("The demo page", steps 1
 and 2). The server is started, its page, the toy release document and the toy table are
 fetched over HTTP from the address it prints, and it is stopped.
@@ -44,6 +44,9 @@ PASTE = re.compile(r"paste this into the (same )?terminal")
 FROM_ROOT = "from the repository's root"
 
 
+QUICKSTART = "docs/quickstart.md"
+
+
 @dataclass(frozen=True)
 class Block:
     """A "Paste this" block of a document: the first one after ``anchor`` in ``section``.
@@ -56,24 +59,24 @@ class Block:
 
 
 PATH = (
-    Block("install", "README.md", "## Quickstart on a toy game", "**1. Install.**", "python3 -m venv .venv"),
-    Block("toy", "README.md", "## Quickstart on a toy game", "**2. Run the toy quickstart.**", "examples/toy_quickstart.py"),
-    Block("bank", "README.md", "## Quickstart on a toy game", "**3. Build a bank**", "cardvision build-bank"),
-    Block("infer", "README.md", "## Quickstart on a toy game", "**4. Detect and name the cards**", "cardvision infer"),
-    Block("browser-build", "README.md", "## In a browser", "Its own tests, and the build", "npm run build"),
+    Block("install", QUICKSTART, "# Quickstart on a toy game", "**1. Install.**", "python3 -m venv .venv"),
+    Block("toy", QUICKSTART, "# Quickstart on a toy game", "**2. Run the toy quickstart.**", "examples/toy_quickstart.py"),
+    Block("bank", QUICKSTART, "# Quickstart on a toy game", "**3. Build a bank**", "cardvision build-bank"),
+    Block("infer", QUICKSTART, "# Quickstart on a toy game", "**4. Detect and name the cards**", "cardvision infer"),
+    Block("browser-build", QUICKSTART, "## In a browser", "Its own tests, and the build", "npm run build"),
     Block("demo-release", "browser/README.md", "## The demo page", "**1. Write the toy release.**",
           "tests/test_browser_fixtures.py --demo"),
     Block("demo-server", "browser/README.md", "## The demo page", "**2. Start the demo on the toy table.**", "npm run demo"),
 )
-# Not part of the path: what the README asks a Windows reader to run in Ubuntu first.
+# Not part of the path: what the quickstart asks a Windows reader to run in Ubuntu first.
 WINDOWS = (
-    Block("windows-packages", "README.md", "## Quickstart on a toy game", "**Which computer?**", "python3-venv"),
-    Block("windows-node", "README.md", "## Quickstart on a toy game", "Then close Ubuntu, open it again", "nvm install"),
+    Block("windows-packages", QUICKSTART, "# Quickstart on a toy game", "**Which computer?**", "python3-venv"),
+    Block("windows-node", QUICKSTART, "# Quickstart on a toy game", "Then close Ubuntu, open it again", "nvm install"),
 )
-# Not part of the path either: how the README gets the code. The run starts in a checkout that
+# Not part of the path either: how the quickstart gets the code. The run starts in a checkout that
 # exists already, so the block is only found and checked, never run (it needs the network).
 ACQUIRE = (
-    Block("get-code", "README.md", "## Quickstart on a toy game", "**0. Get the code.**",
+    Block("get-code", QUICKSTART, "# Quickstart on a toy game", "**0. Get the code.**",
           "git clone https://github.com/ryangswe/riftsight-vision.git"),
 )
 BLOCKS = {block.name: block for block in (*PATH, *WINDOWS, *ACQUIRE)}
@@ -82,10 +85,10 @@ BLOCKS = {block.name: block for block in (*PATH, *WINDOWS, *ACQUIRE)}
 # Each is checked in its document as well (tests/test_beginner_path.py), so neither can change
 # alone.
 MARKERS = (
-    ("README.md", "cardvision 0.1.0"),
-    ("README.md", "1 frame, 6 faces, 3 named"),
-    ("README.md", "(20 rows of 128 values; 20 embedded, 0 kept from the base bank)"),
-    ("README.md", "cardvision infer: 1 frame(s), 6 face(s), 1 back(s), 5 named"),
+    (QUICKSTART, "cardvision 0.1.0"),
+    (QUICKSTART, "1 frame, 6 faces, 3 named"),
+    (QUICKSTART, "(20 rows of 128 values; 20 embedded, 0 kept from the base bank)"),
+    (QUICKSTART, "cardvision infer: 1 frame(s), 6 face(s), 1 back(s), 5 named"),
     ("browser/README.md", "the cards on the table: Amber Circle, Coral Triangle, Azure Circle, Slate Stripes, "
                           "Amber Stripes, and a card back"),
     ("browser/README.md", "demo: http://127.0.0.1:8765/"),

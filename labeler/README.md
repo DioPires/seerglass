@@ -12,7 +12,7 @@ listens on `127.0.0.1` only and never opens a connection itself. Every label is 
 in a folder you choose.
 
 On Windows, run it in Ubuntu under WSL: see "Which computer?" in the
-[main README](../README.md#quickstart-on-a-toy-game).
+[quickstart](../docs/quickstart.md).
 
 It knows nothing about any particular game. The cards come from a catalog file that you give
 it, and their pictures from a folder (or a URL base) that you give it.

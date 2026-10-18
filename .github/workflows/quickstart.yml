@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # The beginner path, run as the documents write it, on the two kinds of computer they cover
-# besides macOS: Linux, and Windows in Ubuntu under WSL 2 (README.md, "Which computer?").
-# tests/beginner_path.py reads the commands out of the "Paste this into the terminal" blocks of
-# README.md and browser/README.md: the quickstart's steps 1 to 4, the browser runtime's tests
-# and build, the demo's toy release and the demo server, whose page, toy release and toy table
-# it then fetches over HTTP. In WSL the repository is cloned into the Linux home first, as the
-# README says, Ubuntu is prepared with the README's own blocks, and the demo is also fetched
-# from Windows at the localhost address the README gives.
+# besides macOS: Linux, and Windows in Ubuntu under WSL 2 (docs/quickstart.md, "Which
+# computer?"). tests/beginner_path.py reads the commands out of the "Paste this into the
+# terminal" blocks of docs/quickstart.md and browser/README.md: the quickstart's steps 1 to 4,
+# the browser runtime's tests and build, the demo's toy release and the demo server, whose page,
+# toy release and toy table it then fetches over HTTP. In WSL the repository is cloned into the
+# Linux home first, as the quickstart says, Ubuntu is prepared with the quickstart's own blocks,
+# and the demo is also fetched from Windows at the localhost address the quickstart gives.
 #
 # Vampire/setup-wsl is pinned to the commit of its tag v7.2.0, since it is not GitHub's own.
 name: Quickstart
@@ -61,7 +61,7 @@ jobs:
         run: |
           printf 'beginner ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/beginner
           chmod 0440 /etc/sudoers.d/beginner
-      - name: Prepare Ubuntu with the README's blocks for Windows
+      - name: Prepare Ubuntu with the quickstart's blocks for Windows
         run: |
           cd "$(wslpath '${{ github.workspace }}')"
           bash -e -c "$(python3 tests/beginner_path.py --print windows-packages)"

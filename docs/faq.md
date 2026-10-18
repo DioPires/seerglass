@@ -122,12 +122,28 @@ The [model card](model-card.md#3-public-only-recipe) has the figures by source.
 
 ## Does it work on my game?
 
-On one other game, the One Piece Card Game, it was measured on a small held-out set (25
-frames, 13 videos, 9 recording groups; wide intervals). The released models as they stand,
-with a bank of that game's cards, named 31.4 % of readable card faces right; both models
-trained with the adapt guide on 23 labeled frames and generated scenes named 74.4 %; physical
-play was well below digital. The figures and their caveats are in
-[adapt-your-game.md](adapt-your-game.md#measured-on-another-game-the-one-piece-card-game).
+Measured on one other game, the One Piece Card Game, on a small held-out set (25 frames from
+13 videos in 9 recording groups, so the intervals are wide):
+
+- the released weights as they stand, with a bank built from that game's card images, named
+  93/296 = 31.4 % (23.7–42.5) of readable card faces right, with 11/104 = 10.6 % (4.2–28.0)
+  of the names shown wrong;
+- both models trained with the adapt guide on 23 labeled frames and generated scenes named
+  221/297 = 74.4 % (50.3–83.8) right, with 9/230 = 3.9 % (1.6–11.8) of the names shown wrong;
+- the optional geometric stage on top of those raised it to 249/297 = 83.8 % (62.5–91.8),
+  with 7/256 = 2.7 % (0.6–10.3) wrong.
+
+Physical play was well below digital: on it, the 23-frame trained models named 68/124 =
+54.8 % (41.0–67.1) right, with 7/75 = 9.3 % (3.2–18.8) of the names shown wrong. One digital
+recording group holds 135 of the 297 readable faces, so the overall figures lean on it. Wrong
+of shown is the share of counted tooltips that are wrong under that evaluation's
+target-sampling protocol. These figures are for that game and that protocol. The figures, the
+caveats and the comparisons written down before scoring are in
+[adapt-your-game.md](adapt-your-game.md#measured-on-another-game-the-one-piece-card-game);
+the example's models and labels are in their own repositories: the
+[models](https://huggingface.co/JuicyKaraageNo1/kenbunshoku-onepiece) and the
+[labels](https://huggingface.co/datasets/JuicyKaraageNo1/kenbunshoku-onepiece-labels) on
+Hugging Face.
 
 What can be said from how it is built:
 
