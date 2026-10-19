@@ -440,8 +440,10 @@ candidate some inliers. `candidates.embeddingTopK` counts card ids: printings of
 count one each, even under the default identity rule. The vote's ratio test is waived when a
 keypoint's two nearest neighbours are of one card, one identity or one image. The seed is given
 to OpenCV's random number generator before each crop and before the vote's approximate matcher
-is trained, so a crop gives the same answer every time with the same index and OpenCV version;
-the RANSAC fits use OpenCV's own fixed-seed generator. Across OpenCV versions or builds, expect the
+is trained, so a crop gives the same answer every time with the same index and OpenCV build
+(version and platform: the arm64 and x86-64 builds of one version can resize differently, and
+the version warning below does not catch that); the RANSAC fits use OpenCV's own fixed-seed
+generator. Across OpenCV versions or builds, expect the
 same rates but not the same per-crop decisions: a fit often chooses between near-equal consensus
 sets, so a crop near the inlier floor can fall either way. Compare stage settings by their rates
 over many crops (`cardvision evaluate compare`), never by individual crops.

@@ -346,3 +346,18 @@ def test_the_banks_declared_contract_is_honored(setup, tmp_path):
 
 def test_look_is_a_plain_value():
     assert Look(top=3, score=0.5, margin=0.1) == Look(3, 0.5, 0.1)
+
+
+def test_an_embedding_s_similarities_do_not_depend_on_its_batch():
+    """A row of one matrix product can change in its last bits with the number of rows beside
+    it (BLAS picks its kernel by shape); similarities() must not, or recognize and looks, which
+    embed different batches, can disagree at an exact tie."""
+    from cardvision.recognize.looks import similarities
+    rng = np.random.default_rng(0)
+    bank_t = rng.standard_normal((128, 4000))
+    x = rng.standard_normal((96, 128))
+    whole = similarities(x, bank_t)
+    for i in (0, 2, 50, 95):
+        assert np.array_equal(similarities(x[i], bank_t), whole[i])
+        for a, b in ((i, i + 1), (max(0, i - 1), min(96, i + 2)), (0, 96)):
+            assert np.array_equal(similarities(x[a:b], bank_t)[i - a], whole[i])
