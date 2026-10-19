@@ -21,6 +21,10 @@ Card Game match. The models run in your browser.
 **New here? Start with [the process at a glance](docs/overview.md):** two diagrams, one of
 what you do and one of how the pipeline works.
 
+**Prefer to watch?** [Six walkthrough videos](https://www.youtube.com/playlist?list=PLMxsDo8Cxri0) follow the same steps on the toy
+game: the big picture, the quickstart and demo page, labeling, training, measuring, and making
+your own browser extension.
+
 ## What it does
 
 - **Finds and names cards in a frame of video.** A detector boxes card faces and card backs,

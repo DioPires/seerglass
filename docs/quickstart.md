@@ -11,6 +11,8 @@ WSL.
 You need Python 3.10 or later, and a copy of the repository: step 0 below gets it. Run
 everything from the repository's root, the folder that holds `README.md`.
 
+**Video:** [Try the toy game: quickstart and demo page](https://www.youtube.com/watch?v=Xq8Dwal1f6E) follows this page.
+
 **How to read the steps.** A block after "Paste this into the terminal" holds commands: copy
 the whole block, paste it into the terminal and press Return. A block after "You should see
 something like" is what the commands print: you do not type it. Your timings and folder names

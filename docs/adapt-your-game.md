@@ -665,6 +665,9 @@ the page.
 **You need:** a GPU (CUDA, or Apple silicon for small runs); your card images; some footage
 of your game.
 
+**Videos:** [Train for your game](https://www.youtube.com/watch?v=pu6TV2CmvwM) runs this tier on the toy game;
+[Label frames with the labeling tool](https://www.youtube.com/watch?v=eL0gChfpS_w) covers step 3.
+
 **Time and hardware:** on Riftbound, the public recipes on public inputs trained on a
 rented cloud GPU: an NVIDIA RTX 4090, on an AMD Ryzen 9 7950X host limited to 13.6 vCPU. The
 recognizer's 34 epochs took 5.0 h. Each 500-step detector run took 45 s. The whole job, from
@@ -1191,6 +1194,8 @@ and `cardvision infer` are known to differ.
 
 ### 9. Put it in a browser extension (optional)
 
+**Video:** [Make it yours: your own browser extension](https://www.youtube.com/watch?v=tRTTq4P3sRU).
+
 The browser runtime answers one question: with the pointer here, over this picture, which
 card would be shown? It loads your release, analyzes frames and applies the accept and hover
 rules. An extension adds everything around that: finding the video on a website and the
@@ -1242,6 +1247,8 @@ folder.
 
 **You need:** labeled frames from recordings that were never trained on. They can be
 recordings of your own.
+
+**Video:** [Measure it](https://www.youtube.com/watch?v=sznZuj5Z6Uw) runs this tier on the toy game's manifest.
 
 **Time:** ongoing. Each command below runs in about a second on the toy data. On Riftbound,
 `cardvision evaluate hover` scored the 53 frames of the public evaluation set with the

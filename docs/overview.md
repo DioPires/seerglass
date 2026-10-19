@@ -7,6 +7,9 @@ you can state. The other shows what the software does with each video frame. The
 the [adapt guide](adapt-your-game.md) and in [how it works](how-it-works.md); this page links
 to both and adds nothing they do not say.
 
+**Video:** [The big picture](https://www.youtube.com/watch?v=4iPA6dzdODM) walks through the same two pictures. All six
+walkthroughs are in [one playlist](https://www.youtube.com/playlist?list=PLMxsDo8Cxri0).
+
 ## What you do
 
 ```mermaid
