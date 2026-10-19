@@ -709,6 +709,14 @@ class Remembered(Toy):
 
 # ---- the server's routes for the two screens ----------------------------------------------------
 
+class _TestServer(ThreadingHTTPServer):
+    """The tool's server class with a listen queue that holds every connection a test opens at
+    once. The default queue is 5; StartsFromThePage opens 16 connections at the same moment, and
+    Linux resets the connections that overflow the queue where macOS lets the client retry."""
+
+    request_queue_size = 64
+
+
 class Server(Toy):
     """A server with no pass yet, started in the folder that holds the toy project."""
 
@@ -717,7 +725,7 @@ class Server(Toy):
         serve.CFG.__dict__.clear()
         self.saved = {k: getattr(serve.HUB, k) for k in ("start_dir", "project", "flags", "args", "command", "configuring")}
         serve.HUB.start_dir, serve.HUB.project, serve.HUB.flags, serve.HUB.args, serve.HUB.command = self.start, None, {}, None, None
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), serve.Handler)
+        self.server = _TestServer(("127.0.0.1", 0), serve.Handler)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         self.addCleanup(self.stop)

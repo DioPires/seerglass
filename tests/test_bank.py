@@ -274,6 +274,9 @@ def _near(base: np.ndarray, cosine: float, seed: int) -> np.ndarray:
     """A unit vector at the given cosine from the unit vector ``base``."""
     other = np.random.default_rng(seed).normal(size=base.shape)
     other -= other.dot(base) * base
+    # A seed that drew ``base`` itself leaves only rounding error here, whose direction differs
+    # between machines: the vector would not be at ``cosine`` from ``base``.
+    assert np.linalg.norm(other) > 0.5, "the seed draws a vector parallel to base: pick another seed"
     other /= np.linalg.norm(other)
     return cosine * base + np.sqrt(1 - cosine ** 2) * other
 
@@ -309,7 +312,7 @@ def test_name_and_cosine_rule_merges_transitively():
     rng = np.random.default_rng(1)
     a = rng.normal(size=64)
     a /= np.linalg.norm(a)
-    b = _near(a, 0.97, 1)
+    b = _near(a, 0.97, 2)  # not seed 1: that draws a again (see _near)
     # c is close to b and, by construction, further than the bar from a.
     away = b - b.dot(a) * a
     away /= np.linalg.norm(away)

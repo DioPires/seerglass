@@ -23,9 +23,11 @@ Sections:
 - ``seam``: rows of cosines, stage results, and what ``Recognizer._geometric_recognition``
   answers, re-ranking and boosting.
 - ``scenes``: a descriptor index of the toy cards and what ``GeometricStage.verify`` finds on
-  each crop, with the crop's own keypoints. Keypoints depend on the OpenCV build; the file
-  records the version it was written with, and the check of this section runs only on that
-  version.
+  each crop, with the crop's own keypoints. Keypoints depend on the OpenCV build, not only on
+  its version: the same version's wheels for an arm64 Mac and for x86-64 Linux find different
+  keypoints on the same image (``cv2.resize`` with ``INTER_LINEAR`` and ORB itself are not
+  bit-exact across processors). The file records the version and the platform it was written
+  on, and the check of this section runs only where both are the same.
 
 To write the file again after a deliberate change::
 
@@ -36,6 +38,7 @@ from __future__ import annotations
 
 import base64
 import json
+import platform
 import struct
 import sys
 from pathlib import Path
@@ -303,6 +306,11 @@ SCENES = [
 ]
 
 
+def opencv_platform() -> str:
+    """The platform an OpenCV wheel is built for, as far as keypoints go: system and processor."""
+    return f"{sys.platform}-{platform.machine().lower()}"
+
+
 def section_scenes() -> dict | None:
     try:
         import cv2
@@ -344,7 +352,7 @@ def section_scenes() -> dict | None:
                                        "votes": v.votes, "matches": v.matches, "inliers": v.inliers,
                                        "evidence": hex64(v.evidence), "fused": hex64(v.fused), "indexed": v.indexed}
                                       for v in result.candidates]})
-    return {"opencv": cv2.__version__, "config": SCENE_CONFIG, "settings": config.to_json(), "identities": identities,
+    return {"opencv": cv2.__version__, "platform": opencv_platform(), "config": SCENE_CONFIG, "settings": config.to_json(), "identities": identities,
             "known": known, "cards": packed, "scenes": scenes}
 
 
@@ -369,8 +377,11 @@ def test_the_fixture_holds_what_the_python_code_computes_now(section):
 def test_the_scenes_hold_what_this_opencv_computes_now():
     cv2 = pytest.importorskip("cv2")
     stored = json.loads(FIXTURE.read_text(encoding="utf-8"))["scenes"]
-    if stored is None or stored["opencv"] != cv2.__version__:
-        pytest.skip(f"the scenes were written with OpenCV {stored and stored['opencv']}; keypoints differ between builds")
+    if stored is None:
+        pytest.skip("the scenes were written without OpenCV")
+    if (stored["opencv"], stored["platform"]) != (cv2.__version__, opencv_platform()):
+        pytest.skip(f"the scenes were written with OpenCV {stored['opencv']} on {stored['platform']}, this is OpenCV "
+                    f"{cv2.__version__} on {opencv_platform()}: keypoints differ between builds")
     assert stored == json.loads(json.dumps(section_scenes()))
 
 

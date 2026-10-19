@@ -188,7 +188,8 @@ def serve_and_check(server: str, cwd: Path, work: Path, while_serving: str | Non
     """Start the demo server with the page's command, fetch what it serves, run
     ``while_serving``, stop it. Returns its output."""
     lines: list[str] = []
-    seen = threading.Event()
+    seen = threading.Event()     # the server named its file, or its output ended
+    started = threading.Event()  # the server named its file
     process = subprocess.Popen(["bash", "-c", f"exec {server}"], cwd=cwd, env={**os.environ, "WORK": str(work)},
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
     group = process.pid          # its own session: the group holds npm and the server it starts
@@ -199,13 +200,16 @@ def serve_and_check(server: str, cwd: Path, work: Path, while_serving: str | Non
             sys.stdout.flush()
             lines.append(line)
             if line.startswith("open the file in the demo: "):
+                started.set()
                 seen.set()
         seen.set()
 
     reader = threading.Thread(target=read, daemon=True)
     reader.start()
     try:
-        if not seen.wait(SERVER_STARTS) or process.poll() is not None:
+        # Output that ended before the server named its file is a failure, whether or not the
+        # process has been reaped yet: the end of its output can come before poll() sees it exit.
+        if not seen.wait(SERVER_STARTS) or not started.is_set() or process.poll() is not None:
             raise Problem("the demo server did not start: " + ("".join(lines[-5:]).strip() or "no output"))
         address = next(line.split(": ", 1)[1].strip() for line in lines if line.startswith("demo: "))
         page = fetch(address).decode("utf-8")

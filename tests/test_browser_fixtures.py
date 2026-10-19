@@ -1206,6 +1206,14 @@ def test_the_contract_file_holds_what_the_python_code_computes_now():
     stored = json.loads(CONTRACT.read_text(encoding="utf-8"))
     current = json.loads(json.dumps(build_contract()))  # through JSON, as the file went
     assert sorted(stored) == sorted(current)
+    # The scores and margins of the bank's looks are sums of 128 products that BLAS adds in an
+    # order of its own, which differs between processors (arm64 macOS and x86-64 Linux differ
+    # in the last bits). The browser's test holds them to 12 decimal places for the same reason;
+    # here every other value, and the best row of each look, must be equal.
+    stored_looks, current_looks = stored["bank"].pop("looks"), current["bank"].pop("looks")
+    assert [look["top"] for look in stored_looks] == [look["top"] for look in current_looks]
+    for key in ("score", "margin"):
+        assert [look[key] for look in stored_looks] == pytest.approx([look[key] for look in current_looks], rel=0, abs=1e-12)
     for section in current:
         assert stored[section] == current[section], f"{section}: run python tests/test_browser_fixtures.py --write"
 
