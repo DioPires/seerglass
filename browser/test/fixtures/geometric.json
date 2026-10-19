@@ -2379,6 +2379,7 @@
  ],
  "scenes": {
   "opencv": "5.0.0",
+  "platform": "darwin-arm64",
   "config": {
    "candidates": {
     "embeddingTopK": 3,

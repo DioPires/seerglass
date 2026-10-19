@@ -73,7 +73,13 @@ def similarities(embeddings: np.ndarray, bank_t: np.ndarray) -> np.ndarray:
     flat = embeddings.reshape(-1, embeddings.shape[-1]).astype(np.float64)
     if len(flat) == 0:
         return np.zeros((*embeddings.shape[:-1], bank_t.shape[1]))
-    return (flat @ bank_t).reshape(*embeddings.shape[:-1], bank_t.shape[1])
+    # One vector-matrix product per embedding, not one matrix product for them all. BLAS picks
+    # its kernel by the shape of the product (OpenBLAS on x86 differs most), so a row of a matrix
+    # product can change in its last bits with the number of rows beside it. Computed one at a
+    # time, an embedding's similarities do not depend on the batch it came in, and
+    # Recognizer.recognize and Recognizer.looks, which embed different batches, agree exactly.
+    rows = np.stack([vector @ bank_t for vector in flat])
+    return rows.reshape(*embeddings.shape[:-1], bank_t.shape[1])
 
 
 def top_and_other(row: np.ndarray, column_identity: np.ndarray) -> tuple[int, float, float]:
