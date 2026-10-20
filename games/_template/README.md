@@ -8,6 +8,11 @@ Copy this folder into a folder of your own and fill in `catalog.json` there:
 cp -r games/_template /path/to/my-game
 ```
 
+If your card list is already a spreadsheet, save it as CSV and let `cardvision import-catalog`
+write the catalog (docs/commands.md). `cards.example.csv` here shows the columns it expects:
+`id`, `name`, `kind`, `printing_of` and `image`, and any others, which become filters
+(`--facets`) or go to each card's `extra`.
+
 **Your game's folder does not go into this repository's `games/`.** Keep it in a work folder
 outside the checkout, or in a repository of your own (a fork counts, in a folder of its own).
 Other games' catalogs, banks and weights are not taken into this repository; see
@@ -66,6 +71,11 @@ The two entries in the template are placeholders; replace them. Each card has:
   real footage will show how well they do. `null` for a card without art (below).
 - `token` (optional): `true` for a card that is made during play and is in no deck. The
   labeling tool lists such cards in a table of their own. Leave it out for every other card.
+- `extra` (optional): an object of anything else you want to keep with the card, with keys and
+  values of your choosing: its rules text, its rarity, an id from another database.
+  `{"text": "Draw a card.", "rarity": "common"}`. Nothing in this repository reads it, so it
+  changes no model, bank, identity or answer; it stays in the catalog, and a release pins it
+  with the file. It must be an object (`{...}`); any other key on a card is still an error.
 
 A card that has no usable image (none at all yet, only a placeholder, or a vector file) is
 listed with `"art": null`: a *card without art*. The key stays; leaving it out is an error.
