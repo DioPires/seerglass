@@ -5,11 +5,11 @@ it replaces, on a small made-up bank."""
 from __future__ import annotations
 
 import numpy as np
+import onnxruntime as ort
 import pytest
 
 from cardvision.mtg import scorer as S
 
-ort = pytest.importorskip("onnxruntime")
 pytest.importorskip("onnx")
 
 
