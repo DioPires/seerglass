@@ -205,6 +205,32 @@ def test_the_command_writes_the_catalog_and_its_companions(tmp_path):
     assert json.loads((tmp_path / "out" / "exclusions.json").read_text(encoding="utf-8"))[0]["reason"] == "layout:token"
 
 
+def test_a_release_catalog_keeps_what_the_runtime_reads_and_the_same_identities():
+    full = build(card("Llanowar Elves", "m19", "314", released_at="2018-07-13"),
+                 card("Llanowar Elves", "dom", "168", released_at="2018-04-27"), dfc("Delver of Secrets", "Insectile Aberration"),
+                 card("Forest", "blb", "280★", image_status="placeholder")).catalog
+    full["cards"].append({"id": "tblb:1", "name": "Rabbit token", "kind": "Creature", "printingOf": None,
+                          "art": "id-tblb-1.jpg", "token": True, "extra": {"set": "tblb"}})
+    cut = M.release_catalog(full)
+    assert [key for key in cut] == ["game", "locale", "identity", "cards"]
+    assert all("extra" not in entry for entry in cut["cards"])
+    assert [{k: v for k, v in entry.items() if k != "extra"} for entry in full["cards"]] == cut["cards"]
+    before, after = parse_catalog(full), parse_catalog(cut)
+    assert after.identity_groups(after.ids()) == before.identity_groups(before.ids()) != []
+    assert after.card("blb:280★").art is None and after.token_ids() == ["tblb:1"]
+    assert "extra" in full["cards"][0]  # the full catalog is left as it was
+
+
+def test_the_release_catalog_command_writes_the_cut_catalog(tmp_path):
+    from cardvision.mtg.__main__ import main
+
+    (tmp_path / "catalog.json").write_text(json.dumps(build(card("A", cn="1"), card("A", "xyz", "2")).catalog),
+                                           encoding="utf-8")
+    assert main(["release-catalog", "--catalog", str(tmp_path / "catalog.json"), "--out", str(tmp_path / "rel" / "c.json")]) == 0
+    written = json.loads((tmp_path / "rel" / "c.json").read_text(encoding="utf-8"))
+    assert [set(entry) for entry in written["cards"]] == [{"id", "name", "kind", "printingOf", "art"}] * 2
+
+
 @pytest.mark.parametrize("type_line, kind", [("Legendary Creature — Elf", "Creature"), ("Basic Land — Forest", "Land"),
                                              ("Artifact Creature — Golem", "Creature"), ("Tribal Instant — Elf", "Instant"), ("Tribal — Elf", "Kindred"),
                                              ("Instant // Sorcery", "Instant"), (None, None)])

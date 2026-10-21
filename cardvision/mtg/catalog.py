@@ -66,6 +66,13 @@ The image addresses are not in the catalog (they would add about a tenth to its 
 stale): ``build_catalog`` returns them as a separate map from id to the ``normal`` image's URL,
 which the image fetcher reads. Each entry's ``art`` is the file name the fetcher writes:
 ``<scryfall id>.jpg``, or ``<scryfall id>-b.jpg`` for a back face.
+
+A release's catalog
+-------------------
+``extra`` is for the tools that build catalogs and banks, and is about nine tenths of the file;
+the browser runtime reads none of it, and holds every entry in memory. ``release_catalog`` cuts
+each entry to ``RELEASE_KEYS``. Ids, names, ``printingOf`` and ``art`` stay as they are, so the
+identities do not change, and a bank built with the full catalog is valid with the cut one.
 """
 
 from __future__ import annotations
@@ -98,6 +105,9 @@ FORMATS = ("standard", "pioneer", "modern", "legacy", "vintage", "pauper", "comm
 KIND_ORDER = ("Creature", "Planeswalker", "Battle", "Land", "Artifact", "Enchantment", "Instant", "Sorcery",
               "Kindred", "Tribal", "Conspiracy", "Dungeon")
 FACE_SUFFIXES = "bcdefgh"
+
+# The keys of an entry that a release's catalog keeps: the ones the runtime reads.
+RELEASE_KEYS = ("id", "name", "kind", "printingOf", "art", "token", "facets")
 
 
 @dataclass
@@ -302,3 +312,14 @@ def build_catalog(cards: Iterable[Mapping[str, Any]]) -> CatalogBuild:
     return CatalogBuild(catalog=document, images=images, exclusions=exclusions,
                         aliases={key: sorted(values) for key, values in sorted(aliases.items())},
                         counts=dict(sorted(counts.items())))
+
+
+def release_catalog(document: Mapping[str, Any]) -> dict[str, Any]:
+    """The catalog a release ships: ``document`` with each entry cut to ``RELEASE_KEYS``.
+
+    The result is checked with the package's own loader before it is returned.
+    """
+    cards = [{key: entry[key] for key in RELEASE_KEYS if key in entry} for entry in document["cards"]]
+    result = {**document, "cards": cards}
+    parse_catalog(result, source="mtg release catalog")
+    return result

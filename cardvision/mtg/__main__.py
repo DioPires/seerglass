@@ -14,6 +14,8 @@
     arena-catalog  the Arena catalog: the Arena pool, a tile entry per permanent, and tokens
     arena-tiles    the tile entries' pictures, cut from the card images
     arena-log      a table of the cards in play, from an MTG Arena Player.log (run it where the log is)
+    release-catalog
+                   the catalog a release ships: each entry cut to what the runtime reads
 
 ``games/mtg/README.md`` has the commands with their arguments, and where each writes.
 """
@@ -135,6 +137,18 @@ def _arena_log(args: argparse.Namespace) -> int:
     return log_main([args.log, "--out", args.out])
 
 
+def _release_catalog(args: argparse.Namespace) -> int:
+    from cardvision.mtg.catalog import release_catalog
+
+    full = Path(args.catalog)
+    result = release_catalog(json.loads(full.read_text(encoding="utf-8")))
+    out = Path(args.out)
+    _write_json(out, result)
+    print(f"wrote {out}: {len(result['cards'])} entries, {out.stat().st_size / 1e6:.1f} MB "
+          f"(from {full.stat().st_size / 1e6:.1f} MB)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m cardvision.mtg", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -179,6 +193,11 @@ def build_parser() -> argparse.ArgumentParser:
     log.add_argument("log", help="a Player.log copied after the session")
     log.add_argument("--out", required=True, help="the table, JSON")
     log.set_defaults(_run=_arena_log)
+
+    release = sub.add_parser("release-catalog", help="the catalog a release ships, cut to what the runtime reads")
+    release.add_argument("--catalog", required=True, help="a catalog: the full one, or the Arena one")
+    release.add_argument("--out", required=True, help="the cut catalog, for the release folder")
+    release.set_defaults(_run=_release_catalog)
 
     from cardvision.mtg import commands
 

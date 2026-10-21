@@ -3,12 +3,13 @@
 # Magic: The Gathering
 
 Seerglass's Magic tools. The code is in [`cardvision/mtg/`](../../cardvision/mtg/), apart from
-the upstream code, so that upstream merges stay clean. This folder holds the Arena accept rule
-and footage sources, and no catalog: the catalog is built from Scryfall's bulk data, and is
-about 80 MB.
+the upstream code, so that upstream merges stay clean. This folder holds the accept rules for
+Arena and for paper and the footage sources, and no catalog: the catalog is built from
+Scryfall's bulk data, and is about 80 MB.
 
 Phase 0 measured how hard Magic is for the released recognizer before anything is trained.
-Phase 1 starts on MTG Arena footage: see [Arena](#arena). Nothing here is trained on Magic yet,
+Phase 1 started on MTG Arena footage (see [Arena](#arena)) and now aims at streams of paper
+cards (see [Paper](#paper)). Nothing here is trained on Magic yet,
 and every figure from a model is from the released **Riftbound** recognizer, used as a
 stand-in.
 
@@ -207,3 +208,38 @@ of it, only card ids, zones, seats and times, and it runs where the log is:
 without installing this repository. Share the table, never the log. Arena replaces
 `Player.log` each time it starts, keeping one `Player-prev.log`, so copy it after each session.
 Card names come from Scryfall's `arena_id`; Arena's own card database and files are not read.
+
+## Paper
+
+Phase 1 now aims at streams of paper cards, tournament coverage first. A paper release is made
+from the full catalog, so its bank holds every printing:
+
+```sh
+python -m cardvision.mtg release-catalog --catalog "$WORK/mtg/catalog.json" --out "$REL/catalog.json"
+cardvision build-bank --catalog "$REL/catalog.json" --art "$WORK/art" --recognizer "$REL/recognizer.onnx" \
+    --base "$WORK/base.json" --out "$REL/bank.json" --groups-out "$REL/identity-groups.json" --skip-missing-art
+cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/recognizer.onnx" \
+    --bank "$REL/bank.json" --catalog "$REL/catalog.json" --accept "$REL/accept.json" --out "$REL/release.json"
+```
+
+`$REL` is a release folder holding a copy of [`accept-paper.json`](accept-paper.json), named
+`accept.json`, and the two models; `$WORK/base.json` is made by `embed` and
+`bank-from-embeddings` as [for Arena](#arena).
+
+| Command | What it does | Writes |
+| --- | --- | --- |
+| `release-catalog` | The catalog a release ships: each entry cut to what the browser runtime reads (`id`, `name`, `kind`, `printingOf`, `art`, and `token` and `facets` where an entry has them). | a catalog file |
+
+The runtime reads nothing in `extra`, and holds every entry in memory. On the full catalog the
+cut takes the file from 80.5 MB to 13.7 MB (4.1 MB gzipped), and, measured in Node, its parsed
+form from about 311 MB of memory to 33 MB. Ids, names, `printingOf` and `art` are unchanged,
+so the identities are the same: a bank built with either catalog is valid with the other. An
+Arena release can be cut the same way.
+
+[`accept-paper.json`](accept-paper.json) is the paper accept rule: tau 0.72 and delta 0.07,
+Arena's values until labelled paper frames calibrate it, with the rotation retry on, since a
+tapped paper card turns a quarter turn.
+
+Tournament coverage is the built-in source type `physical/tournament`, and a game filmed by a
+player's own camera is `physical/webcam`. [`sources.json`](sources.json) adds `physical/show`:
+a produced show filmed from several cameras, such as a Commander show.
