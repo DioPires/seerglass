@@ -596,36 +596,51 @@ def _subset(looks: Looks, mask: np.ndarray) -> Looks:
 def _pair(a: Looks, b: Looks, a_point: Mapping[str, Any] | None, b_point: Mapping[str, Any] | None,
           clusters: np.ndarray, tau: float, delta: float) -> dict[str, Any]:
     """Bank ``b`` against bank ``a`` on the same queries: top-1 and named right at the default
-    rule, and named right with each bank at its own operating point."""
+    rule, at the first bank's operating point for both, and with each bank at its own."""
+
+    def compare(first: np.ndarray, second: np.ndarray) -> dict[str, Any]:
+        return {**mcnemar(first, second), **cluster_bootstrap(first, second, clusters)}
+
     out = {"top1Upright": mcnemar(a.right[:, 0], b.right[:, 0]),
-           "namedRightAtRule": {**mcnemar(a.outcome(tau, delta), b.outcome(tau, delta)),
-                                **cluster_bootstrap(a.outcome(tau, delta), b.outcome(tau, delta), clusters)}}
+           "namedRightAtRule": compare(a.outcome(tau, delta), b.outcome(tau, delta))}
+    if a_point:
+        out["namedRightAtFirstBankPoint"] = compare(a.outcome(a_point["tau"], a_point["delta"]),
+                                                    b.outcome(a_point["tau"], a_point["delta"]))
     if a_point and b_point:
-        first, second = a.outcome(a_point["tau"], a_point["delta"]), b.outcome(b_point["tau"], b_point["delta"])
-        out["namedRightAtOwnPoint"] = {**mcnemar(first, second), **cluster_bootstrap(first, second, clusters)}
+        out["namedRightAtOwnPoint"] = compare(a.outcome(a_point["tau"], a_point["delta"]),
+                                              b.outcome(b_point["tau"], b_point["delta"]))
     return out
 
 
-def _point(grid: Mapping[str, Any] | None) -> dict[str, Any] | None:
-    """A grid's best point holding wrong of shown to ``WRONG_LIMIT``."""
-    return grid["best"][WRONG_LIMIT] if grid else None
+def _point(grid: Mapping[str, Any] | None, open_set: bool = True) -> dict[str, Any] | None:
+    """A bank's operating point: the best point of its grid that holds wrong of shown to
+    ``WRONG_LIMIT``, and, when the bank was given an open set (``open_set``), the share of it
+    named to the same limit."""
+    if not grid:
+        return None
+    if open_set and "bestWithOpenSet" in grid:
+        return grid["bestWithOpenSet"][WRONG_LIMIT]
+    return grid["best"][WRONG_LIMIT]
 
 
 def _decide(banks: Mapping[str, Any], order: Sequence[str], condition: str) -> dict[str, Any]:
     """The decision rule over one ladder's banks: the largest bank (every smaller one passing
-    too) whose named right at its best point holding wrong of shown to ``WRONG_LIMIT`` is within
-    ``WITHIN`` of the first bank's, under one condition (``ownRowOut`` or ``ownRowIn``); and
-    whether the first bank refuses the open-set cards at its point."""
+    too) whose named right at its operating point (``_point``) is within ``WITHIN`` of the first
+    bank's, under one condition (``ownRowOut`` or ``ownRowIn``). Each step also gives the bank's
+    named right at the first bank's operating point (``atFirstBankPoint``): the same rule for
+    every bank, the loss crowding alone causes."""
     grid_of = (lambda e: e["ownRowOut"]["twinSet"]["grid"]) if condition == "ownRowOut" else (lambda e: e["ownRowIn"]["grid"])
     first_point = _point(grid_of(banks[order[0]]))
     if first_point is None:
-        return {"chosen": None, "why": f"the first bank cannot hold wrong of shown to {WRONG_LIMIT}"}
+        return {"chosen": None, "why": f"the first bank has no point holding wrong of shown to {WRONG_LIMIT}"}
     steps = {}
     chosen, failed = order[0], False
     for name in order:
         point = _point(grid_of(banks[name]))
         loss = None if point is None else round(first_point["namedRight"] - point["namedRight"], 4)
         steps[name] = {"point": point, "lossAgainstFirst": loss}
+        if condition == "ownRowOut":
+            steps[name]["atFirstBankPoint"] = banks[name]["ownRowOut"]["twinSet"].get("atFirstBankPoint")
         if name.endswith("-size"):  # a control bank
             continue
         failed = failed or loss is None or loss > WITHIN  # a bank counts only if every smaller one does
@@ -673,9 +688,9 @@ def run_crowding(catalog: Catalog, ids: Sequence[str], rows: np.ndarray, queries
         "families": {family: [QUERY_KINDS[k] for k in kinds] for family, kinds in FAMILIES.items()},
         "mainFamily": MAIN_FAMILY, "wrongLimit": float(WRONG_LIMIT), "within": WITHIN, "decisionRule": (
             f"the largest bank (every smaller one passing too) whose named right on the twin set, own row out, at its "
-            f"best point holding wrong of shown to {WRONG_LIMIT}, is within {WITHIN:.2f} of the first bank's "
-            f"({MAIN_FAMILY} family, rotation retry on); and the first bank names at most {WRONG_LIMIT} of the "
-            f"open-set cards at its point"),
+            f"operating point is within {WITHIN:.2f} of the first bank's ({MAIN_FAMILY} family, rotation retry on). "
+            f"A bank's operating point is the tau and delta that name the most of the twin set while holding wrong "
+            f"of shown to {WRONG_LIMIT} and, when the bank has an open set, the share of it named to {WRONG_LIMIT}"),
         "scopeRows": {}, "ladders": {},
     }
 
@@ -734,16 +749,25 @@ def run_crowding(catalog: Catalog, ids: Sequence[str], rows: np.ndarray, queries
                 say(f"  {bank_name}: own row in: top-1 {entry['ownRowIn']['atRule']['top1Upright']}, named right "
                     f"{entry['ownRowIn']['atRule']['namedRight']}; own row out, twin set: top-1 {at['atRule']['top1Upright']}, "
                     f"named right {at['atRule']['namedRight']} (wrong of shown {at['atRule']['wrongOfShown']}); "
-                    f"at {WRONG_LIMIT}: {_point(at['grid'])}; open set named "
+                    f"operating point: {_point(at['grid'])}; open set named at the rule "
                     f"{entry.get('openSet', {}).get('namedAtRule')}")
             first_name, _, first_in, first_out, _ = scored[0]
             clusters_in = labels.art[first_in.card]
             first_twin = _subset(first_out, twin)
+            first_point = _point(fam["banks"][first_name]["ownRowOut"]["twinSet"]["grid"])
+            for bank_name, _, _, outside, open_looks in scored:
+                at = fam["banks"][bank_name]["ownRowOut"]["twinSet"]
+                if first_point:
+                    at["atFirstBankPoint"] = {"tau": first_point["tau"], "delta": first_point["delta"],
+                                              **outside.summary(first_point["tau"], first_point["delta"], twin)}
+                    if open_looks is not None:
+                        at["atFirstBankPoint"]["openSetNamed"] = _rate(
+                            open_looks.rule(first_point["tau"], first_point["delta"])[1], len(open_looks.best))
             for bank_name, _, inside, outside, _ in scored[1:]:
                 e, f = fam["banks"][bank_name], fam["banks"][first_name]
                 fam["banks"][bank_name]["againstFirst"] = {
-                    "ownRowIn": _pair(first_in, inside, _point(f["ownRowIn"]["grid"]), _point(e["ownRowIn"]["grid"]),
-                                      clusters_in, tau, delta)}
+                    "ownRowIn": _pair(first_in, inside, _point(f["ownRowIn"]["grid"], False),
+                                      _point(e["ownRowIn"]["grid"], False), clusters_in, tau, delta)}
                 if twin.any():
                     fam["banks"][bank_name]["againstFirst"]["ownRowOutTwinSet"] = _pair(
                         first_twin, _subset(outside, twin), _point(f["ownRowOut"]["twinSet"]["grid"]),

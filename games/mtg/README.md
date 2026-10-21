@@ -104,8 +104,10 @@ scan of what else the bank holds of the card, the realistic case when the card h
 printing of the same look); and, for cards the bank does not hold, how many it names anyway
 (**open set**). Each is reported at the accept rule (tau 0.62, delta 0.05, rotation retry on),
 and over a grid of tau 0.50 to 0.90 and delta 0 to 0.15, with the best point that keeps the
-wrong share of named cards to 1, 2 and 5 %. Banks are compared on the same queries with
-McNemar's test and a bootstrap clustered by illustration.
+wrong share of named cards to 1, 2 and 5 %. A bank's *operating point* is the one that names
+the most while keeping both the wrong share of named cards and the share of open-set cards
+named to 2 %. Banks are compared on the same queries, at their own operating points and at the
+first bank's, with McNemar's test and a bootstrap clustered by illustration.
 
 What it is not: accuracy on video. The queries are synthetic, with no detector error,
 perspective, glare, sleeve, overlay or occlusion.

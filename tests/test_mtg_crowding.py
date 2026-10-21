@@ -142,4 +142,9 @@ def test_the_report_on_a_small_world():
     assert first["printing"]["ownRowOut"]["twinFound"] == 1.0
     assert set(family["decision"]) == {"ownRowOut", "ownRowIn"}
     assert family["decision"]["ownRowOut"]["chosen"] in ("standard-arena", "arena", "all")
-    assert "ownRowOutTwinSet" in family["banks"]["all"]["againstFirst"]
+    against = family["banks"]["all"]["againstFirst"]["ownRowOutTwinSet"]
+    assert {"top1Upright", "namedRightAtRule", "namedRightAtFirstBankPoint"} <= set(against)
+    point = family["banks"]["all"]["ownRowOut"]["twinSet"]["atFirstBankPoint"]
+    assert point["queries"] == 4 and "tau" in point
+    assert "openSetNamed" in family["banks"]["standard-arena"]["ownRowOut"]["twinSet"]["atFirstBankPoint"]
+    assert "atFirstBankPoint" in family["decision"]["ownRowOut"]["steps"]["arena"]
