@@ -17,6 +17,7 @@
     paper-catalog  the paper catalog: every printing on paper, and tokens
     release-catalog
                    the catalog a release ships: each entry cut to what the runtime reads
+    label-catalog  the catalog for the labelling tool, its pictures loaded from Scryfall
 
 ``games/mtg/README.md`` has the commands with their arguments, and where each writes.
 """
@@ -158,6 +159,19 @@ def _release_catalog(args: argparse.Namespace) -> int:
     return 0
 
 
+def _label_catalog(args: argparse.Namespace) -> int:
+    from cardvision.mtg.catalog import label_catalog
+
+    document = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
+    images = json.loads(Path(args.images).read_text(encoding="utf-8"))
+    result = label_catalog(document, images)
+    out = Path(args.out)
+    _write_json(out, result)
+    without = sum(1 for entry in result["cards"] if entry["art"] is None)
+    print(f"wrote {out}: {len(result['cards'])} entries, {without} without a picture")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m cardvision.mtg", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -214,6 +228,12 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--catalog", required=True, help="a catalog: the full one, or the Arena one")
     release.add_argument("--out", required=True, help="the cut catalog, for the release folder")
     release.set_defaults(_run=_release_catalog)
+
+    label = sub.add_parser("label-catalog", help="the catalog for the labelling tool, pictures from Scryfall")
+    label.add_argument("--catalog", required=True, help="a catalog: the paper one, or the Arena one made with --no-tiles")
+    label.add_argument("--images", required=True, help="that catalog's images.json")
+    label.add_argument("--out", required=True, help="the labelling catalog")
+    label.set_defaults(_run=_label_catalog)
 
     from cardvision.mtg import commands
 

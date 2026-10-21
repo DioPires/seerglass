@@ -231,6 +231,7 @@ cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/reco
 | Command | What it does | Writes |
 | --- | --- | --- |
 | `paper-catalog` | The paper catalog: every printing on paper, and the tokens of every paper set's token sets. See [the paper catalog](#the-paper-catalog). | `catalog.json`, `images.json`, `paper-summary.json` |
+| `label-catalog` | The catalog for the [labelling tool](../../labeler/README.md): the same cut, with each entry's `art` its image's address on Scryfall's image host, so that the tool needs no image folder. Give it the paper catalog, or an Arena catalog made with `--no-tiles`. | a catalog file |
 | `release-catalog` | The catalog a release ships: each entry cut to what the browser runtime reads (`id`, `name`, `kind`, `printingOf`, `art`, and `token` and `facets` where an entry has them). | a catalog file |
 
 ### The paper catalog

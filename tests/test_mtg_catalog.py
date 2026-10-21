@@ -231,6 +231,14 @@ def test_the_release_catalog_command_writes_the_cut_catalog(tmp_path):
     assert [set(entry) for entry in written["cards"]] == [{"id", "name", "kind", "printingOf", "art"}] * 2
 
 
+def test_a_label_catalog_takes_its_pictures_from_the_image_addresses():
+    result = build(card("A", cn="1"), card("B", cn="2"), card("C", cn="3", image_status="placeholder"))
+    cut = M.label_catalog(result.catalog, {k: v for k, v in result.images.items() if k != "abc:2"})
+    art = {entry["id"]: entry["art"] for entry in cut["cards"]}
+    assert art == {"abc:1": result.images["abc:1"], "abc:2": None, "abc:3": None}
+    assert art["abc:1"].startswith("https://cards.scryfall.io/") and "extra" not in cut["cards"][0]
+
+
 @pytest.mark.parametrize("type_line, kind", [("Legendary Creature — Elf", "Creature"), ("Basic Land — Forest", "Land"),
                                              ("Artifact Creature — Golem", "Creature"), ("Tribal Instant — Elf", "Instant"), ("Tribal — Elf", "Kindred"),
                                              ("Instant // Sorcery", "Instant"), (None, None)])
