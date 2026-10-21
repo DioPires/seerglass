@@ -76,9 +76,10 @@ TILE_QUALITY = 92
 
 
 @dataclass
-class ArenaCatalog:
-    """The result of ``arena_catalog``: the catalog document (``cardvision.core.catalog``
-    format), and what was kept and added, for the report."""
+class PoolCatalog:
+    """The result of ``pool_catalog`` (``arena_catalog``, ``cardvision.mtg.paper.paper_catalog``):
+    the catalog document (``cardvision.core.catalog`` format), and what was kept and added, for
+    the report."""
 
     catalog: dict[str, Any]
     counts: dict[str, Any] = field(default_factory=dict)
@@ -167,14 +168,26 @@ def token_entries(cards: Iterable[Mapping[str, Any]], sets: Iterable[str]) -> tu
 
 
 def arena_catalog(full: Mapping[str, Any], tokens: Iterable[Mapping[str, Any]] = (), *,
-                  tiles: bool = True) -> ArenaCatalog:
+                  tiles: bool = True) -> PoolCatalog:
     """The Arena catalog, from the full catalog document and the token entries of
     ``token_entries``.
 
     The result is checked with the package's own loader before it is returned.
     """
+    return pool_catalog(full, tokens, environment="arena", tiles=tiles)
+
+
+def pool_catalog(full: Mapping[str, Any], tokens: Iterable[Mapping[str, Any]] = (), *, environment: str,
+                 tiles: bool) -> PoolCatalog:
+    """The catalog of one environment's pool: the full catalog's entries whose printing is in
+    ``environment`` (``extra.games`` names it), the token entries of ``token_entries`` grouped
+    as described above, and tile entries when ``tiles`` is true. Each identity's representative
+    is chosen again among what is kept, and ``extra`` is cut to ``SLIM_EXTRA``.
+
+    The result is checked with the package's own loader before it is returned.
+    """
     counts: Counter = Counter()
-    faces = [entry for entry in full["cards"] if "arena" in entry["extra"].get("games", ())]
+    faces = [entry for entry in full["cards"] if environment in entry["extra"].get("games", ())]
     counts["faces"] = len(faces)
 
     # key_of: an entry's identity. A face keeps the full catalog's (its representative's id).
@@ -234,10 +247,10 @@ def arena_catalog(full: Mapping[str, Any], tokens: Iterable[Mapping[str, Any]] =
     entries.sort(key=lambda entry: entry["id"])
     document = {"game": full.get("game", "mtg"), "locale": full.get("locale", "en"), "identity": "printing",
                 "cards": entries}
-    parse_catalog(document, source="mtg arena catalog")
+    parse_catalog(document, source=f"mtg {environment} catalog")
     counts["entries"] = len(entries)
     counts["identities"] = len(members)
-    return ArenaCatalog(catalog=document, counts=dict(sorted(counts.items())))
+    return PoolCatalog(catalog=document, counts=dict(sorted(counts.items())))
 
 
 @dataclass

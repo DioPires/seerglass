@@ -14,6 +14,7 @@
     arena-catalog  the Arena catalog: the Arena pool, a tile entry per permanent, and tokens
     arena-tiles    the tile entries' pictures, cut from the card images
     arena-log      a table of the cards in play, from an MTG Arena Player.log (run it where the log is)
+    paper-catalog  the paper catalog: every printing on paper, and tokens
     release-catalog
                    the catalog a release ships: each entry cut to what the runtime reads
 
@@ -100,25 +101,33 @@ def _fetch_images(args: argparse.Namespace) -> int:
     return 1 if report.failed else 0
 
 
-def _arena_catalog(args: argparse.Namespace) -> int:
-    from cardvision.mtg.arena import arena_catalog, token_entries
+def _pool_catalog(args: argparse.Namespace, environment: str, tiles: bool) -> int:
+    from cardvision.mtg.arena import pool_catalog, token_entries
     from cardvision.mtg.scryfall import read_cards
 
     full = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
-    sets = {entry["extra"]["set"] for entry in full["cards"] if "arena" in entry["extra"].get("games", ())}
+    sets = {entry["extra"]["set"] for entry in full["cards"] if environment in entry["extra"].get("games", ())}
     tokens, token_urls = token_entries(read_cards(args.bulk), sets) if args.bulk else ([], {})
-    result = arena_catalog(full, tokens, tiles=not args.no_tiles)
+    result = pool_catalog(full, tokens, environment=environment, tiles=tiles)
     out = Path(args.out)
     _write_json(out / "catalog.json", result.catalog)
     face_urls = json.loads(Path(args.images).read_text(encoding="utf-8")) if args.images else {}
     kept = {entry["id"] for entry in result.catalog["cards"]}
     urls = {key: url for key, url in {**face_urls, **token_urls}.items() if key in kept}
     _write_json(out / "images.json", urls)
-    _write_json(out / "arena-summary.json", result.counts, indent=1)
+    _write_json(out / f"{environment}-summary.json", result.counts, indent=1)
     print(json.dumps(result.counts, indent=1))
     print(f"wrote {out / 'catalog.json'}: {result.counts['entries']} entries, {result.counts['identities']} identities; "
           f"{out / 'images.json'}: {len(urls)} image addresses")
     return 0
+
+
+def _arena_catalog(args: argparse.Namespace) -> int:
+    return _pool_catalog(args, "arena", tiles=not args.no_tiles)
+
+
+def _paper_catalog(args: argparse.Namespace) -> int:
+    return _pool_catalog(args, "paper", tiles=False)
 
 
 def _arena_tiles(args: argparse.Namespace) -> int:
@@ -193,6 +202,13 @@ def build_parser() -> argparse.ArgumentParser:
     log.add_argument("log", help="a Player.log copied after the session")
     log.add_argument("--out", required=True, help="the table, JSON")
     log.set_defaults(_run=_arena_log)
+
+    paper = sub.add_parser("paper-catalog", help="the paper catalog: every paper printing, and tokens")
+    paper.add_argument("--catalog", required=True, help="the full catalog build-catalog wrote")
+    paper.add_argument("--images", default=None, help="the full catalog's images.json, to keep the faces' addresses")
+    paper.add_argument("--bulk", default=None, help="the default_cards bulk file, for the tokens (none without it)")
+    paper.add_argument("--out", required=True, help="folder for catalog.json, images.json and paper-summary.json")
+    paper.set_defaults(_run=_paper_catalog)
 
     release = sub.add_parser("release-catalog", help="the catalog a release ships, cut to what the runtime reads")
     release.add_argument("--catalog", required=True, help="a catalog: the full one, or the Arena one")

@@ -211,11 +211,13 @@ Card names come from Scryfall's `arena_id`; Arena's own card database and files 
 
 ## Paper
 
-Phase 1 now aims at streams of paper cards, tournament coverage first. A paper release is made
-from the full catalog, so its bank holds every printing:
+Phase 1 now aims at streams of paper cards, tournament coverage first. A paper release's bank
+holds every printing on paper, and the tokens:
 
 ```sh
-python -m cardvision.mtg release-catalog --catalog "$WORK/mtg/catalog.json" --out "$REL/catalog.json"
+python -m cardvision.mtg paper-catalog --catalog "$WORK/mtg/catalog.json" --images "$WORK/mtg/images.json" \
+    --bulk "$WORK"/bulk/default-cards-*.jsonl.gz --out "$WORK/paper"
+python -m cardvision.mtg release-catalog --catalog "$WORK/paper/catalog.json" --out "$REL/catalog.json"
 cardvision build-bank --catalog "$REL/catalog.json" --art "$WORK/art" --recognizer "$REL/recognizer.onnx" \
     --base "$WORK/base.json" --out "$REL/bank.json" --groups-out "$REL/identity-groups.json" --skip-missing-art
 cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/recognizer.onnx" \
@@ -228,7 +230,22 @@ cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/reco
 
 | Command | What it does | Writes |
 | --- | --- | --- |
+| `paper-catalog` | The paper catalog: every printing on paper, and the tokens of every paper set's token sets. See [the paper catalog](#the-paper-catalog). | `catalog.json`, `images.json`, `paper-summary.json` |
 | `release-catalog` | The catalog a release ships: each entry cut to what the browser runtime reads (`id`, `name`, `kind`, `printingOf`, `art`, and `token` and `facets` where an entry has them). | a catalog file |
+
+### The paper catalog
+
+Every entry of the full catalog whose printing exists on paper: the 3,594 faces only on Arena
+(Alchemy's digital cards, on the bulk file of 2026-10-21) never lie on a table, and a bank row
+for one could only ever win wrongly. Tokens are taken and grouped as for
+[Arena](#the-arena-catalog), from the token sets of every set with a paper printing: a token
+named like a card joins that card's identity, and any other is named `<name> token`. A paper
+card is a whole card wherever it lies, so there are no tile entries. On the bulk file of
+2026-10-21: 101,401 faces and 2,836 token faces, 34,244 identities (387 of them tokens).
+`fetch-images` with the paper catalog and its `images.json` fetches only the images not yet
+in the art folder (after a Phase 0 run, the tokens'), under the `--download` rule above.
+
+### The release catalog
 
 The runtime reads nothing in `extra`, and holds every entry in memory. On the full catalog the
 cut takes the file from 80.5 MB to 13.7 MB (4.1 MB gzipped), and, measured in Node, its parsed

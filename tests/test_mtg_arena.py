@@ -135,3 +135,34 @@ def test_a_base_bank_from_embeddings_is_the_bank_build_bank_makes(tmp_path, toy,
     fresh = bank_build.build_bank(catalog, art, session, model="tiny").bank
     assert [e["vec"] for e in extended.bank["entries"]] == [e["vec"] for e in fresh["entries"]]
     assert [e["artV"] for e in extended.bank["entries"]] == [e["artV"] for e in fresh["entries"]]
+
+
+def test_the_paper_catalog_keeps_paper_printings_and_tokens_and_no_tiles(full):
+    from cardvision.mtg.paper import paper_catalog
+
+    arena_only = _entry("y22:5", "A-Kite", "k", printing_of="lea:1", games=("arena",), released="2022-12-08")
+    result = paper_catalog({**full, "cards": [*full["cards"], arena_only]}, _tokens())
+    cards = {card["id"]: card for card in result.catalog["cards"]}
+    assert set(cards) == {"lea:1", "dmu:2", "m21:3", "dmu:9", "dmu:10", "lea:4", "tdmu:1", "tm21:1", "tdmu:2"}
+    assert cards["lea:1"]["printingOf"] is None and cards["m21:3"]["printingOf"] == "lea:1"
+    assert cards["tdmu:2"]["printingOf"] == "lea:1" and cards["tdmu:1"]["name"] == "Soldier token"
+    assert not any(A.is_tile(card) for card in cards.values()) and result.counts["token-faces"] == 3
+    parse_catalog(result.catalog)
+
+
+def test_the_paper_catalog_command_takes_tokens_from_the_bulk_file(tmp_path, full):
+    from cardvision.mtg.__main__ import main
+
+    soldier = {"layout": "token", "lang": "en", "set": "tlea", "set_type": "token", "collector_number": "1",
+               "id": "abc", "name": "Soldier", "type_line": "Token Creature — Soldier",
+               "image_uris": {"normal": "https://cards.scryfall.io/normal/front/a/b/abc.jpg?1"}}
+    (tmp_path / "catalog.json").write_text(json.dumps(full), encoding="utf-8")
+    (tmp_path / "images.json").write_text(json.dumps({"lea:1": "https://cards.scryfall.io/k.jpg"}), encoding="utf-8")
+    (tmp_path / "bulk.jsonl").write_text(json.dumps(soldier) + "\n", encoding="utf-8")
+    assert main(["paper-catalog", "--catalog", str(tmp_path / "catalog.json"), "--images", str(tmp_path / "images.json"),
+                 "--bulk", str(tmp_path / "bulk.jsonl"), "--out", str(tmp_path / "paper")]) == 0
+    written = json.loads((tmp_path / "paper" / "catalog.json").read_text(encoding="utf-8"))
+    assert {card["id"] for card in written["cards"] if card.get("token")} == {"tlea:1"}
+    assert json.loads((tmp_path / "paper" / "images.json").read_text(encoding="utf-8")) == {
+        "lea:1": "https://cards.scryfall.io/k.jpg", "tlea:1": soldier["image_uris"]["normal"]}
+    assert (tmp_path / "paper" / "paper-summary.json").is_file()
