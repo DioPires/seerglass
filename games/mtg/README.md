@@ -233,6 +233,7 @@ cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/reco
 | `paper-catalog` | The paper catalog: every printing on paper, and the tokens of every paper set's token sets. See [the paper catalog](#the-paper-catalog). | `catalog.json`, `images.json`, `paper-summary.json` |
 | `label-catalog` | The catalog for the [labelling tool](../../labeler/README.md): the same cut, with each entry's `art` its image's address on Scryfall's image host, so that the tool needs no image folder. Give it the paper catalog, or an Arena catalog made with `--no-tiles`. | a catalog file |
 | `release-catalog` | The catalog a release ships: each entry cut to what the browser runtime reads (`id`, `name`, `kind`, `printingOf`, `art`, and `token` and `facets` where an entry has them). | a catalog file |
+| `cut-frames` | Frames to label, from a video on Twitch or YouTube: for each `--t`, the frame on screen at that time, cut the way [`cardvision fetch`](../../cardvision/data/fetch.py) cuts it again. See [frames to label](#frames-to-label). | `t<seconds>_<ms>.png` per frame and `times.jsonl` in `--out` |
 
 ### The paper catalog
 
@@ -257,6 +258,29 @@ Arena release can be cut the same way.
 [`accept-paper.json`](accept-paper.json) is the paper accept rule: tau 0.72 and delta 0.07,
 Arena's values until labelled paper frames calibrate it, with the rotation retry on, since a
 tapped paper card turns a quarter turn.
+
+### Frames to label
+
+A labelled row names its frame by video and time, and whoever fetches it again downloads a
+stretch of the video around that time and takes the frame on screen then. `cut-frames` cuts the
+frame with the same pieces (the stretch fetch plans, its downloader, and the reader's frame at
+`t`) and saves it as PNG, so that the label export writes its fingerprint (`frame_dhash`):
+
+```sh
+python -m cardvision.mtg cut-frames --platform twitch --video 2461092202 --t 33588.261 --out "$FRAMES/scg-rc-hartford"
+cat "$FRAMES"/*/times.jsonl > "$FRAMES/times.jsonl"
+python3 labeler/make_sample.py --out "$FRAMES/sample.json" --frames-root "$FRAMES" --all --times "$FRAMES/times.jsonl"
+```
+
+One folder per video is one asset of the sample; a frame's name is its time, so the times of
+several folders can share one file. The label export reads each frame's video from its asset's
+`"platform"` and `"videoId"`, which `make_sample.py` leaves to be added
+([the labelling format](../../labeler/FORMAT.md)).
+
+It needs the `download` and `video` extras and ffmpeg, and keeps no video. Seeking in the stream
+with ffmpeg alone is not the same: on a Twitch broadcast, `ffmpeg -ss T -i <playlist>` gave a
+frame 6 s from the one at `T`, while the stretch download gave the frame at `T` (checked on
+2026-10-21 against the playlist's segment times).
 
 Tournament coverage is the built-in source type `physical/tournament`, and a game filmed by a
 player's own camera is `physical/webcam`. [`sources.json`](sources.json) adds `physical/show`:

@@ -18,6 +18,7 @@
     release-catalog
                    the catalog a release ships: each entry cut to what the runtime reads
     label-catalog  the catalog for the labelling tool, its pictures loaded from Scryfall
+    cut-frames     frames to label, cut from a video the way cardvision fetch cuts them again
 
 ``games/mtg/README.md`` has the commands with their arguments, and where each writes.
 """
@@ -172,6 +173,17 @@ def _label_catalog(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cut_frames(args: argparse.Namespace) -> int:
+    from cardvision.mtg.frames import cut_frames
+
+    try:
+        cut_frames(args.platform, args.video, args.t, args.out)
+    except (ValueError, RuntimeError) as error:
+        print(f"cut-frames: {error}", file=sys.stderr)
+        return 2
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m cardvision.mtg", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -234,6 +246,13 @@ def build_parser() -> argparse.ArgumentParser:
     label.add_argument("--images", required=True, help="that catalog's images.json")
     label.add_argument("--out", required=True, help="the labelling catalog")
     label.set_defaults(_run=_label_catalog)
+
+    cut = sub.add_parser("cut-frames", help="frames to label, cut the way cardvision fetch cuts them again")
+    cut.add_argument("--platform", required=True, help="where the video is: twitch or youtube")
+    cut.add_argument("--video", required=True, help="the video's id on its platform")
+    cut.add_argument("--t", required=True, type=float, action="append", help="a time in seconds (repeatable)")
+    cut.add_argument("--out", required=True, help="the frames folder (outside the repository)")
+    cut.set_defaults(_run=_cut_frames)
 
     from cardvision.mtg import commands
 
