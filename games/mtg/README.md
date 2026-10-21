@@ -161,13 +161,14 @@ cardvision build-bank --catalog "$REL/catalog.json" --art "$WORK/art" --recogniz
 ### The Arena catalog
 
 Arena draws a card whole in the hand (where only its top part shows), on the stack and in the
-inspect view, but draws a permanent on the battlefield as a nearly square tile: the art, the
-name and the power and toughness, no rules text. A bank row made from the whole card does not
-match a tile, so each permanent face also has a *tile entry*, `<face id>:art`, whose picture is
-a square cut from the art box. It is the same identity as its card (`printingOf` the identity's
-representative, `extra.artOf` the face), so the two rows never narrow each other's margin. The
-tile's shape is provisional (`extra.tile` is `square-art-v0`): Arena's own crop is to be
-measured on real footage. Instants and sorceries have no tile entry.
+inspect view, but draws a permanent on the battlefield as a tile, wider than tall: the name
+bar over the art, and the power and toughness, no rules text. A bank row made from the whole
+card does not match a tile, so each permanent face also has a *tile entry*, `<face id>:art`,
+whose picture runs from the top of the name bar to the bottom of the art box. It is the same
+identity as its card (`printingOf` the identity's representative, `extra.artOf` the face), so
+the two rows never narrow each other's margin. The shape (`extra.tile` is `name-art-v1`) was
+measured on public Arena footage; release v0 used a square from the middle of the art
+(`square-art-v0`). Instants and sorceries have no tile entry.
 
 Tokens come from the token sets of the pool's sets, since Scryfall marks almost none as being
 on Arena. A token named like a card of the pool joins that card's identity; any other token is

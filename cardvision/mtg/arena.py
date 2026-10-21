@@ -3,8 +3,8 @@
 
 MTG Arena draws a card in two ways. In the hand, on the stack and in the inspect view it draws
 the whole card (in the hand, only its top part shows: the rest is below the screen's edge). On
-the battlefield it draws a permanent as a *tile*: a nearly square box of the card's art, with
-its name and, for a creature, its power and toughness, and no rules text. A tapped permanent
+the battlefield it draws a permanent as a *tile*, wider than tall: the card's name bar over its
+art and, for a creature, its power and toughness, and no rules text. A tapped permanent
 tilts by a few degrees, fades and carries a large tap mark; it never turns a quarter turn, which
 is why the accept rule for Arena has the rotation retry off (``games/mtg/accept.json``).
 
@@ -15,7 +15,7 @@ Arena catalog holds, besides each face of the Arena pool, a *tile entry* for eac
 * **Faces.** Every entry of the full catalog (``cardvision.mtg.catalog``) whose printing is on
   Arena (``extra.games`` names ``arena``).
 * **Tile entries**, ``<face id>:art``, one per face of a permanent kind (``PERMANENT_KINDS``)
-  that has art. Its picture is a square cut from the face's art box (``tile_image``), written
+  that has art. Its picture is the face's name bar and art box (``tile_image``), written
   under ``tiles/`` in the image folder by ``render_tiles``. Its ``printingOf`` is the identity's
   representative, so a tile and its card are one identity and never narrow each other's margin,
   and ``extra.artOf`` names the face. Instants and sorceries never lie on the battlefield and
@@ -32,9 +32,10 @@ representative is chosen again among the entries kept, by the full catalog's own
 earliest printing, front face with art first). ``extra`` is cut to the fields the Arena tools
 read (``SLIM_EXTRA``).
 
-The tile's shape is provisional (``TILE_SHAPE``): a square cut from the middle of the art box.
-Arena's own tile crop, its name strip and its power and toughness box are to be measured on
-real footage, and the tiles drawn again in that shape.
+The tile's shape (``TILE_SHAPE``) was measured on public Arena footage: a tile runs from the top
+of the name bar to the bottom of the art box, about 1.2 times as wide as tall, where release v0
+cut a square from the middle of the art. The power and toughness box and the icons Arena
+draws over a tile are not drawn on it.
 """
 
 from __future__ import annotations
@@ -54,7 +55,7 @@ PERMANENT_KINDS = frozenset({"Creature", "Planeswalker", "Battle", "Land", "Arti
 TOKEN_LAYOUTS = frozenset({"token", "double_faced_token"})
 TILE_SUFFIX = ":art"
 TILE_FOLDER = "tiles"
-TILE_SHAPE = "square-art-v0"
+TILE_SHAPE = "name-art-v1"
 # The fields of ``extra`` an Arena catalog keeps.
 SLIM_EXTRA = ("set", "collector_number", "face", "oracle_id", "illustration_id", "arena_id", "frame",
               "frame_effects", "border_color", "full_art", "layout", "released_at", "digital", "legal")
@@ -69,6 +70,8 @@ ART_BOXES = {
 }
 # Full-art and borderless faces: the art runs to the edges, behind the text.
 FULL_ART_BOX = (0.05, 0.11, 0.95, 0.60)
+# The top of the name bar, as a fraction of the image's height, per frame (2003 and later: 0.04).
+NAME_TOPS = {"1993": 0.035, "1997": 0.035}
 TILE_QUALITY = 92
 
 
@@ -98,17 +101,15 @@ def art_box(extra: Mapping[str, Any]) -> tuple[float, float, float, float]:
 
 
 def tile_image(image, extra: Mapping[str, Any]):
-    """A tile's picture: the largest square in the middle of the face's art box.
+    """A tile's picture: the face's name bar and art box, the width of the art box.
 
     ``image`` is a Pillow image of the face's ``normal`` scan; the result is a new image.
     """
-    left, top, right, bottom = art_box(extra)
+    left, _, right, bottom = art_box(extra)
+    top = NAME_TOPS.get(extra.get("frame") or "2015", 0.04)
     width, height = image.size
-    box = (left * width, top * height, right * width, bottom * height)
-    side = min(box[2] - box[0], box[3] - box[1])
-    cx, cy = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
-    square = (round(cx - side / 2), round(cy - side / 2), round(cx + side / 2), round(cy + side / 2))
-    return image.convert("RGB").crop(square)
+    box = (round(left * width), round(top * height), round(right * width), round(bottom * height))
+    return image.convert("RGB").crop(box)
 
 
 def _slim(extra: Mapping[str, Any]) -> dict[str, Any]:

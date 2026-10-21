@@ -91,13 +91,14 @@ def test_token_entries_from_scryfall_objects():
     assert A.parent_set({"set": "dmu", "set_type": "expansion"}) == "dmu"
 
 
-def test_the_tile_is_a_square_from_the_art_box():
+def test_the_tile_is_the_name_bar_and_the_art_box():
     from PIL import Image
 
     image = Image.new("RGB", (488, 680), "white")
     tile = A.tile_image(image, {"frame": "2015", "border_color": "black", "full_art": False})
     width, height = tile.size
-    assert abs(width - height) <= 1 and 290 <= width <= 310
+    assert (width, height) == (414, 350)  # as wide as the art box, from the name bar's top: about 1.2 to 1
+    assert A.tile_image(image, {"frame": "1997"}).size == (380, 347)
     assert A.art_box({"border_color": "borderless"}) == A.FULL_ART_BOX
     assert A.art_box({"frame": "1997"}) == A.ART_BOXES["1997"]
 
