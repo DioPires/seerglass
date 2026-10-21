@@ -19,6 +19,7 @@
                    the catalog a release ships: each entry cut to what the runtime reads
     label-catalog  the catalog for the labelling tool, its pictures loaded from Scryfall
     cut-frames     frames to label, cut from a video the way cardvision fetch cuts them again
+    decklist-names a deck list with front-face names made full, for labeler/decklist_from_text.py
 
 ``games/mtg/README.md`` has the commands with their arguments, and where each writes.
 """
@@ -184,6 +185,20 @@ def _cut_frames(args: argparse.Namespace) -> int:
     return 0
 
 
+def _decklist_names(args: argparse.Namespace) -> int:
+    from cardvision.mtg.decklists import full_names
+
+    document = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
+    text, rewritten = full_names(Path(args.input).read_text(encoding="utf-8"), document["cards"])
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
+    for name, whole in rewritten:
+        print(f"{name} -> {whole}")
+    print(f"wrote {out}: {len(rewritten)} name(s) made full")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m cardvision.mtg", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -253,6 +268,12 @@ def build_parser() -> argparse.ArgumentParser:
     cut.add_argument("--t", required=True, type=float, action="append", help="a time in seconds (repeatable)")
     cut.add_argument("--out", required=True, help="the frames folder (outside the repository)")
     cut.set_defaults(_run=_cut_frames)
+
+    names = sub.add_parser("decklist-names", help="a deck list with front-face names made full")
+    names.add_argument("--catalog", required=True, help="the catalog the labelling tool uses")
+    names.add_argument("--in", dest="input", required=True, help="the deck list as the site wrote it")
+    names.add_argument("--out", required=True, help="the deck list to give decklist_from_text.py")
+    names.set_defaults(_run=_decklist_names)
 
     from cardvision.mtg import commands
 

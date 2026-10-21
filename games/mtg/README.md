@@ -233,6 +233,7 @@ cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/reco
 | `paper-catalog` | The paper catalog: every printing on paper, and the tokens of every paper set's token sets. See [the paper catalog](#the-paper-catalog). | `catalog.json`, `images.json`, `paper-summary.json` |
 | `label-catalog` | The catalog for the [labelling tool](../../labeler/README.md): the same cut, with each entry's `art` its image's address on Scryfall's image host, so that the tool needs no image folder. Give it the paper catalog, or an Arena catalog made with `--no-tiles`. | a catalog file |
 | `release-catalog` | The catalog a release ships: each entry cut to what the browser runtime reads (`id`, `name`, `kind`, `printingOf`, `art`, and `token` and `facets` where an entry has them). | a catalog file |
+| `decklist-names` | A deck list as a deck-list site writes it, with each card of two faces named by both, as the catalog names it ("Callous Sell-Sword" becomes "Callous Sell-Sword // Burn Together"), so that [`decklist_from_text.py`](../../labeler/decklist_from_text.py) matches it. A name is made full only when it is no catalog name itself and exactly one catalog name starts with it and ` // `. | a deck-list text file |
 | `cut-frames` | Frames to label, from a video on Twitch or YouTube: for each `--t`, the frame on screen at that time, cut the way [`cardvision fetch`](../../cardvision/data/fetch.py) cuts it again. See [frames to label](#frames-to-label). | `t<seconds>_<ms>.png` per frame and `times.jsonl` in `--out` |
 
 ### The paper catalog
