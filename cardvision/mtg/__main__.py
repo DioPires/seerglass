@@ -9,6 +9,11 @@
     embed          embed every printing (bank rows and held-out query views) with a recognizer
     crowding       the crowding measurements, from the embeddings
     scorer         bench data for browser/bench: a bank, its scoring graphs and a frame of looks
+    bank-from-embeddings
+                   a base bank for cardvision build-bank --base, from embed's shards
+    arena-catalog  the Arena catalog: the Arena pool, a tile entry per permanent, and tokens
+    arena-tiles    the tile entries' pictures, cut from the card images
+    arena-log      a table of the cards in play, from an MTG Arena Player.log (run it where the log is)
 
 ``games/mtg/README.md`` has the commands with their arguments, and where each writes.
 """
@@ -93,6 +98,43 @@ def _fetch_images(args: argparse.Namespace) -> int:
     return 1 if report.failed else 0
 
 
+def _arena_catalog(args: argparse.Namespace) -> int:
+    from cardvision.mtg.arena import arena_catalog, token_entries
+    from cardvision.mtg.scryfall import read_cards
+
+    full = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
+    sets = {entry["extra"]["set"] for entry in full["cards"] if "arena" in entry["extra"].get("games", ())}
+    tokens, token_urls = token_entries(read_cards(args.bulk), sets) if args.bulk else ([], {})
+    result = arena_catalog(full, tokens, tiles=not args.no_tiles)
+    out = Path(args.out)
+    _write_json(out / "catalog.json", result.catalog)
+    face_urls = json.loads(Path(args.images).read_text(encoding="utf-8")) if args.images else {}
+    kept = {entry["id"] for entry in result.catalog["cards"]}
+    urls = {key: url for key, url in {**face_urls, **token_urls}.items() if key in kept}
+    _write_json(out / "images.json", urls)
+    _write_json(out / "arena-summary.json", result.counts, indent=1)
+    print(json.dumps(result.counts, indent=1))
+    print(f"wrote {out / 'catalog.json'}: {result.counts['entries']} entries, {result.counts['identities']} identities; "
+          f"{out / 'images.json'}: {len(urls)} image addresses")
+    return 0
+
+
+def _arena_tiles(args: argparse.Namespace) -> int:
+    from cardvision.mtg.arena import render_tiles
+
+    catalog = json.loads(Path(args.catalog).read_text(encoding="utf-8"))
+    report = render_tiles(catalog, args.art, overwrite=args.overwrite)
+    print(f"arena-tiles: {report.written} written, {report.present} already there, "
+          f"{len(report.missing_source)} without their card's image")
+    return 0
+
+
+def _arena_log(args: argparse.Namespace) -> int:
+    from cardvision.mtg.arena_log import main as log_main
+
+    return log_main([args.log, "--out", args.out])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m cardvision.mtg", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -118,6 +160,25 @@ def build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--download", action="store_true",
                        help="fetch the images; without it, only say how many would be fetched")
     fetch.set_defaults(_run=_fetch_images)
+
+    arena = sub.add_parser("arena-catalog", help="the Arena catalog: Arena pool, tile entries and tokens")
+    arena.add_argument("--catalog", required=True, help="the full catalog build-catalog wrote")
+    arena.add_argument("--images", default=None, help="the full catalog's images.json, to keep the pool's addresses")
+    arena.add_argument("--bulk", default=None, help="the default_cards bulk file, for the tokens (none without it)")
+    arena.add_argument("--no-tiles", action="store_true", help="leave out the tile entries")
+    arena.add_argument("--out", required=True, help="folder for catalog.json, images.json and arena-summary.json")
+    arena.set_defaults(_run=_arena_catalog)
+
+    tiles = sub.add_parser("arena-tiles", help="cut the tile entries' pictures from the card images")
+    tiles.add_argument("--catalog", required=True, help="an Arena catalog")
+    tiles.add_argument("--art", required=True, help="the image folder; tiles are written under its tiles/ folder")
+    tiles.add_argument("--overwrite", action="store_true", help="cut the tiles that are already there again")
+    tiles.set_defaults(_run=_arena_tiles)
+
+    log = sub.add_parser("arena-log", help="the cards in play, from an MTG Arena Player.log")
+    log.add_argument("log", help="a Player.log copied after the session")
+    log.add_argument("--out", required=True, help="the table, JSON")
+    log.set_defaults(_run=_arena_log)
 
     from cardvision.mtg import commands
 

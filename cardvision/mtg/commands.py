@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """The measuring commands of ``python -m cardvision.mtg``: look groups, embedding, the crowding
-curve and the scorer. Registered by ``cardvision.mtg.__main__``."""
+curve, the scorer, and a base bank from the embeddings. Registered by ``cardvision.mtg.__main__``."""
 
 from __future__ import annotations
 
@@ -112,6 +112,38 @@ def _scorer(args: argparse.Namespace) -> int:
     return 0
 
 
+def _bank_from_embeddings(args: argparse.Namespace) -> int:
+    from cardvision.bank import build
+    from cardvision.core.bank import encode_bank
+    from cardvision.core.catalog import load_catalog
+    from cardvision.mtg.crowding import load_embeddings
+
+    catalog = load_catalog(args.catalog)
+    found: dict[str, np.ndarray] = {}
+    for folder in args.embeddings:
+        ids, rows, _ = load_embeddings(folder)
+        found.update(zip(ids, rows))
+    art = Path(args.art)
+    ids, rows, versions = [], [], []
+    for card in catalog:
+        if card.art is None or card.id not in found or not (art / card.art).is_file():
+            continue
+        ids.append(card.id)
+        rows.append(found[card.id])
+        versions.append(build.art_version((art / card.art).read_bytes()))
+    # The header build_bank writes (cardvision.bank.build), for the rows embed made exactly as it does.
+    descriptor = build.preprocessing_descriptor(build.FULL128)
+    header = {"schemaVersion": build.BANK_SCHEMA_VERSION, "kind": build.BANK_KIND, "game": catalog.game,
+              "locale": catalog.locale, "version": 1, "model": args.model, "dim": int(rows[0].shape[0]),
+              "dtype": build.VECTOR_DTYPE_NAME, "preprocessing": descriptor, "centerMask": descriptor["centerMask"],
+              "views": build.VIEWS_PER_CARD, "aggregation": build.AGGREGATION,
+              "cardCount": len(set(ids)), "entryCount": len(ids)}
+    _write(Path(args.out), encode_bank(ids, np.stack(rows), extra=header, art_versions=versions))
+    print(f"wrote {args.out}: {len(ids)} rows of the catalog's {sum(1 for card in catalog if card.art)} cards with art; "
+          "pass it to cardvision build-bank --base, which checks every row and embeds the rest")
+    return 0
+
+
 def register(sub: argparse._SubParsersAction) -> None:
     """Add the measuring commands to the parser's subcommands."""
     looks = sub.add_parser("look-groups", help="look-group statistics per format")
@@ -138,6 +170,15 @@ def register(sub: argparse._SubParsersAction) -> None:
     crowding.add_argument("--delta", type=float, default=0.05)
     crowding.add_argument("--seed", type=int, default=0)
     crowding.set_defaults(_run=_crowding)
+
+    base = sub.add_parser("bank-from-embeddings",
+                          help="a base bank for build-bank --base, from the embed command's shards")
+    base.add_argument("--catalog", required=True)
+    base.add_argument("--art", required=True, help="the image folder, for each row's artV")
+    base.add_argument("--embeddings", required=True, nargs="+", help="one or more folders of embedding shards")
+    base.add_argument("--model", required=True, help="the recognizer's label, as the release will pin it")
+    base.add_argument("--out", required=True)
+    base.set_defaults(_run=_bank_from_embeddings)
 
     scorer = sub.add_parser("scorer", help="bench data: a bank, its scoring graphs and a frame of looks")
     scorer.add_argument("--rows", type=int, required=True)

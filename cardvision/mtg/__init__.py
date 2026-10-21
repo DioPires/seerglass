@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Magic: The Gathering, for Seerglass: a catalog from Scryfall's bulk data, the card images,
-and the measurements that choose a bank's scope.
+the measurements that choose a bank's scope, and the tools for MTG Arena footage.
 
 Nothing in the rest of the package imports this subpackage, and it changes nothing there: it
 writes the files the package reads (a catalog, card images) and measures the package's own
@@ -27,4 +27,10 @@ The modules:
 ``scorer``
     Bank scoring as one ONNX graph (matrix product, top rows, best row of another identity),
     for a GPU.
+``arena``
+    The Arena catalog: the Arena pool, a tile entry per permanent (Arena draws permanents on
+    the battlefield as art tiles), and tokens grouped by name.
+``arena_log``
+    A table of the cards in play from MTG Arena's ``Player.log``: card ids, zones, seats and
+    times, and nothing personal. Standard library only, so that it runs where the log is.
 """
