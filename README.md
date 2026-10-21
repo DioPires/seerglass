@@ -1,33 +1,51 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# riftsight-vision
+# Seerglass
 
-Open weights, labels and tools for recognizing trading cards in gameplay video: built for
-Riftbound, laid out so you can point it at your own game.
+Card recognition for Magic: The Gathering in streams and videos. Rest the pointer on a card in
+a YouTube or Twitch video and Seerglass names it, and its exact printing when the picture shows
+it. A browser extension comes first; a phone app later.
 
-This is the card recognition that the RiftSight browser extension ships. Two small models
-find the cards in a video frame and name them, so that a viewer can rest the pointer on a
-card and read it.
+Seerglass is based on RiftSight's open vision model: it is a fork of
+[riftsight-vision](https://github.com/ryangswe/riftsight-vision), which recognizes Riftbound
+cards in gameplay video. It is not RiftSight, and RiftSight does not stand behind it.
 
-**A fan project. Not endorsed by Riot Games.** Riftbound, the card names and the card art
-belong to Riot Games.
+**Not affiliated with or endorsed by Wizards of the Coast.** Magic: The Gathering, the card
+names and the card art belong to Wizards of the Coast. Card data comes from
+[Scryfall](https://scryfall.com). This repository holds no card art.
 
-**It reads cards. It cannot draw them.** This is recognition, not image generation.
+## Status
 
-**Try it with nothing to install:** <https://ryangswe.github.io/riftsight-vision/>. Move the
-pointer over the toy game's example table, or drop a screenshot or a video of your own One Piece
-Card Game match. The models run in your browser.
+**Early.** Everything below this section, and the documentation it links to, is still
+riftsight-vision's: the tools, the Riftbound models and their measurements. The Magic parts are
+being built:
 
+- a Magic catalog generated from Scryfall's bulk data, one entry per printing;
+- a bank of every printing, built with the recognizer;
+- detector and recognizer fine-tuned on Magic footage (MTG Arena, MTGO, paper, event coverage);
+- a two-level answer: the card's name, then its printing when the frame can tell printings
+  apart, and "printing uncertain" when it cannot;
+- a browser extension for YouTube and Twitch.
+
+The Python package keeps its upstream name, `cardvision`.
+
+## What it is built on
+
+Two small models find the cards in a video frame and name them. A detector boxes card faces
+and backs; a recognizer turns each face into a vector that is matched against a bank built from
+card images; an accept rule shows nothing when the match is not trusted. Adding cards means
+adding rows to the bank, with no retraining. [docs/how-it-works.md](docs/how-it-works.md) is
+the full description.
+
+- **Try upstream's demo with nothing to install:** <https://ryangswe.github.io/riftsight-vision/>.
 - **New here?** [docs/start-here.md](docs/start-here.md) picks the page for you.
 - **Have a spreadsheet of your cards?** [docs/your-game.md](docs/your-game.md) takes it, your
   card images and a video to card names on that video.
-- **Prefer to watch?** [Six walkthrough videos](https://www.youtube.com/playlist?list=PLMxsDo8Cxri0)
-  follow the same steps on the toy game, from the big picture to your own browser extension.
 
 ## How well it works
 
-On a small public evaluation set used during development, which flatters them somewhat, the
-released models named 92.5 % of readable card faces right, and 1.6 % of the names shown were
+These are upstream's figures, for Riftbound; Magic has none yet. On a small public evaluation
+set used during development, which flatters them somewhat, the released models named 92.5 % of readable card faces right, and 1.6 % of the names shown were
 wrong. The [model card](docs/model-card.md#evaluation) has the figures by source and the limits.
 
 ## Quickstart
@@ -68,8 +86,8 @@ Everything else: [docs/reference.md](docs/reference.md). A coding agent starts w
 
 ## Built with this
 
-Catalogs, banks and weights for other games live in their authors' own repositories, not
-here. If you have built something with this, open an issue and it is listed.
+Other games built on riftsight-vision, listed upstream. Catalogs, banks and weights for other
+games live in their authors' own repositories.
 
 - **[Kenbunshoku](https://github.com/ryangswe/kenbunshoku)**, a browser extension for One Piece
   Card Game videos, built on the browser runtime. Its catalog, bank, weights and labels are on
@@ -79,22 +97,21 @@ here. If you have built something with this, open an issue and it is listed.
 
 ## How this was built
 
-I'm a solo software engineer with some machine learning experience; computer vision isn't my
-core competency. I built this with heavy use of AI coding tools. It was checked with tests, with
-comparisons against the code that trained the released models, with a private held-out test
-scored once, and with outside reviews by other AI models and fresh AI sessions, not by people.
+From riftsight-vision's author: I'm a solo software engineer with some machine learning
+experience; computer vision isn't my core competency. I built this with heavy use of AI coding
+tools. It was checked with tests, with comparisons against the code that trained the released
+models, with a private held-out test scored once, and with outside reviews by other AI models
+and fresh AI sessions, not by people.
 [docs/how-this-was-built.md](docs/how-this-was-built.md) says what each check does and does not show.
 
 ## Support
 
-One person maintains this. Issues are read once a week; removal and security requests are
-handled within 7 days. This repository is a maintained snapshot of what shipped, not a
-development trunk ([SUPPORT.md](SUPPORT.md)). To report a card named wrong, see
-[Reporting a wrong card](docs/model-card.md#reporting-a-wrong-card): a video id and a time,
-never a frame or a screenshot.
+Seerglass is maintained by [DioPires](https://github.com/DioPires). Bugs and wrong
+recognitions go to this repository's issues: a video id and a time, never a frame or a
+screenshot. See [SUPPORT.md](SUPPORT.md).
 
-If this is useful to you, you can support the work on [Ko-fi](https://ko-fi.com/ryangdev1): a
-thank-you that does not buy support beyond what is promised above.
+Upstream riftsight-vision is maintained by its own author; please do not send them questions
+about Seerglass.
 
 ## License
 
@@ -111,10 +128,12 @@ thank-you that does not buy support beyond what is promised above.
 
 ## Trademark
 
-The Apache license does not cover the RiftSight name or logo. A fork or a product built on this
-must use its own, and may say "based on RiftSight's open vision model" ([TRADEMARK.md](TRADEMARK.md)).
+The name Seerglass is this project's own. The Apache license does not cover the RiftSight name
+or logo, and Seerglass does not use them beyond saying, truthfully, that it is based on
+RiftSight's open vision model ([TRADEMARK.md](TRADEMARK.md)).
 
 ## Not endorsed
 
-RiftSight is a fan project and is not endorsed by Riot Games. Riftbound, the card names and
-the card art belong to Riot Games.
+Seerglass is a fan project. It is not endorsed by Wizards of the Coast, Riot Games or the
+RiftSight project. Magic: The Gathering and its card names and art belong to Wizards of the
+Coast; Riftbound and its card names and art belong to Riot Games.

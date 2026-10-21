@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 blank_issues_enabled: false
 contact_links:
-  - name: How do I adapt this to my game?
-    url: https://github.com/ryangswe/riftsight-vision/discussions
-    about: Questions about adapting the tools to another card game go to Discussions, not to issues. Start with docs/adapt-your-game.md.
+  - name: A question about riftsight-vision itself
+    url: https://github.com/ryangswe/riftsight-vision
+    about: Seerglass is a fork. Questions about the upstream tools, not about Magic, go to riftsight-vision.
   - name: Security problem
-    url: https://github.com/ryangswe/riftsight-vision/blob/main/SECURITY.md
+    url: https://github.com/DioPires/seerglass/blob/main/SECURITY.md
     about: Do not open an issue. SECURITY.md says how to report it privately.

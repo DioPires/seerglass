@@ -11,6 +11,8 @@ break the public surface; this file names each break and how to migrate.
 
 ### Added
 
+- Seerglass: this fork's name, README, notice, trademark, support and security pages, adapting
+  riftsight-vision to Magic: The Gathering.
 - `cardvision import-catalog`: write a catalog from a CSV, TSV or JSON card list, with
   `--overwrite` and `--delimiter`; images are downloaded only with `--download`.
 - `cardvision check-catalog`: load a catalog and report its card count, cards without art,

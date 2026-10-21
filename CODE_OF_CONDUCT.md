@@ -35,8 +35,8 @@ repeated, there is no warning.
 
 ## Reporting
 
-Write to <riftsight.support@gmail.com>. Reports are read by the maintainer and are
-kept private.
+Contact the maintainer, [DioPires](https://github.com/DioPires), through their GitHub
+profile. Reports are read by the maintainer and are kept private.
 
 This project has one maintainer, so there is nobody else here to take a report about the
 maintainer. For that, use the reporting tools of the site that hosts the repository.
