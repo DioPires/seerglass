@@ -2,37 +2,20 @@
 
 # Support
 
-This repository is maintained by one person, with AI assistance. The promise is small on
-purpose, so that it can be kept.
+Seerglass is maintained by [DioPires](https://github.com/DioPires). It is an early-stage fork of
+riftsight-vision, adapting it to Magic: The Gathering.
 
 ## What this repository is
 
-A maintained snapshot of the card recognition that shipped in RiftSight: the models, the bank
-and accept rule, the labels and the tools, as of the release. It is not the trunk that
-development happens on. Fixes and contributions land here. Later private work may or may not
-be brought across, and nothing here promises that it will.
-
-The bank published with the release is frozen. New cards are not added to it here. Adding
-cards to your own copy is one command and needs no retraining:
+The card recognition tools of riftsight-vision, being adapted to Magic. Until the Magic catalog,
+bank and models land, the tools, documentation and released files here are upstream's, built
+for Riftbound. Adding cards to a bank is one command and needs no retraining:
 [docs/measure.md](docs/measure.md), "Refresh the bank when cards are added".
 
 ## What you can expect
 
-| | |
-| --- | --- |
-| Issues | Read once a week, on Tuesday. Best effort after that. |
-| Footage removal requests | Acted on within 7 days. |
-| Security reports | Answered within 7 days. See [SECURITY.md](SECURITY.md). |
-| Label pull requests | Reviewed in a monthly batch. |
-| Other pull requests | Best effort. |
-
-## What is not promised
-
-- **Debugging another game's adaptation.** The guide and [AGENTS.md](AGENTS.md) are the
-  support for that. If a step in them is wrong or unclear, that is a bug here and an issue is
-  welcome. Help beyond the guide happens in Discussions, from whoever has time.
-- **A roadmap.** No dates and no features are promised.
-- **New banks or retrained weights.** See above.
+Issues and pull requests are read on a best-effort basis. No dates and no features are
+promised.
 
 ## Where to go
 
@@ -40,9 +23,9 @@ cards to your own copy is one command and needs no retraining:
 | --- | --- |
 | A bug in the code or the docs | The "Bug" issue form |
 | A card named wrong | The "Wrong recognition" issue form: video id and timestamp, no images |
-| Rows about your channel's videos that you want removed | The "Footage removal request" issue form, or <riftsight.support@gmail.com> |
+| Rows about your channel's videos that you want removed | The "Footage removal request" issue form |
 | A security problem | Not an issue: [SECURITY.md](SECURITY.md) |
-| "How do I adapt this to my game?" | Discussions: <https://github.com/ryangswe/riftsight-vision/discussions> |
+| A question about riftsight-vision itself, not Seerglass | Upstream: <https://github.com/ryangswe/riftsight-vision> |
 
 Please do not attach card art, video frames or screenshots of someone's video to an issue.
 A video id and a time are enough to find the frame.

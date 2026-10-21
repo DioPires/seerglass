@@ -5,12 +5,11 @@
 ## Reporting a problem
 
 Do not open a public issue for a security problem. Use the "Report a vulnerability" button
-on this repository's Security tab (GitHub's private vulnerability reporting), or write to
-<riftsight.support@gmail.com>.
+on this repository's Security tab (GitHub's private vulnerability reporting).
 
-Say what you found, how to reproduce it and which version or commit you used. You get an
-answer within 7 days. One person maintains this repository, so a fix can take longer than the
-answer.
+Say what you found, how to reproduce it and which version or commit you used. One person
+maintains this repository, so an answer and a fix are best effort. A problem that also affects
+upstream riftsight-vision should be reported there as well, by its own SECURITY.md.
 
 ## Known issues
 

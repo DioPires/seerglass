@@ -64,6 +64,6 @@ def test_the_pull_request_template_asks_for_a_changelog_line():
     assert "no user-visible change" in text and "CHANGELOG.md" in text
 
 
-def test_security_names_the_report_a_vulnerability_button_beside_the_email():
+def test_security_names_the_report_a_vulnerability_button_and_no_upstream_email():
     text = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
-    assert "Report a vulnerability" in text and "riftsight.support@gmail.com" in text
+    assert "Report a vulnerability" in text and "riftsight.support@gmail.com" not in text

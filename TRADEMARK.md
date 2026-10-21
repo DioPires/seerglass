@@ -6,6 +6,17 @@ The Apache-2.0 license covers the code and this project's own work in the weight
 own work in the bank and identity groups, and the catalog's selection and arrangement. It does
 not cover names or logos. Section 6 of the license says so.
 
+## Seerglass
+
+Seerglass is this fork's own name. It is not RiftSight, and RiftSight does not stand behind
+it. Seerglass says only, truthfully, that it is "based on RiftSight's open vision model".
+
+## Magic: The Gathering
+
+Magic: The Gathering, its card names, set symbols and card art belong to Wizards of the Coast.
+Seerglass is unofficial fan content and is not endorsed by Wizards of the Coast. It holds no
+card art, and its catalog's card data comes from Scryfall.
+
 ## RiftSight
 
 The name RiftSight and the RiftSight logo are not licensed by this repository.
