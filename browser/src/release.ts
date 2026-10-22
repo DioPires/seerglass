@@ -706,7 +706,7 @@ export async function buildReleasePipeline(
     if (!embedder) return await fail("recognizer: the model did not initialize on any execution provider, or is not the model the release describes");
     detector = await factories.detector(data.detectorBytes, release.detector.settings, providers);
     if (!detector) return await fail("detector: the model did not initialize on any execution provider, or is not the model the release describes");
-    const scorer = await ExactBankScorer.create(data.bank);
+    const scorer = ExactBankScorer.create(data.bank);
     const pipeline = new Pipeline({
       detector,
       embedder,

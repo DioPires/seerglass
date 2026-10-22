@@ -42,11 +42,21 @@ function decodeBase64(text: string): Uint8Array {
   return bytes;
 }
 
-let compiled: Promise<WebAssembly.Module | null> | null = null;
+let compiled: WebAssembly.Module | null | undefined;
 
-/** The compiled kernel, or null where this engine cannot compile it (no SIMD). Compiled once. */
-function kernelModule(): Promise<WebAssembly.Module | null> {
-  compiled ??= WebAssembly.compile(decodeBase64(EXACT_KERNEL_BASE64) as BufferSource).catch(() => null);
+/**
+ * The compiled kernel, or null where this engine cannot compile it (no SIMD). Compiled once, and
+ * synchronously: the module is about 3 KB, under every engine's limit for that, and an
+ * asynchronous compile waits behind ONNX Runtime's own (measured: half a second during a load).
+ */
+function kernelModule(): WebAssembly.Module | null {
+  if (compiled === undefined) {
+    try {
+      compiled = new WebAssembly.Module(decodeBase64(EXACT_KERNEL_BASE64) as BufferSource);
+    } catch {
+      compiled = null;
+    }
+  }
   return compiled;
 }
 
@@ -79,14 +89,14 @@ export class ExactBankScorer {
    * not `KERNEL_DIM` values long. On success `bank.matrix` is the scorer's copy of the same
    * values, and the matrix it held before is no longer referenced by the bank.
    */
-  static async create(bank: EmbeddingBank): Promise<ExactBankScorer | null> {
+  static create(bank: EmbeddingBank): ExactBankScorer | null {
     if (bank.dim !== KERNEL_DIM || bank.ids.length === 0 || bank.matrix.length !== bank.ids.length * KERNEL_DIM) return null;
-    const module = await kernelModule();
+    const module = kernelModule();
     if (module === null) return null;
     const rows = bank.ids.length;
     try {
       // The kernel's own stack and data come first, up to its __heap_base; the buffers follow.
-      const probe = await WebAssembly.instantiate(module, { env: { memory: new WebAssembly.Memory({ initial: 2 }) } });
+      const probe = new WebAssembly.Instance(module, { env: { memory: new WebAssembly.Memory({ initial: 2 }) } });
       let top = Number((probe.exports.__heap_base as WebAssembly.Global).value);
       const take = (bytes: number): number => {
         const start = Math.ceil(top / 16) * 16;
@@ -104,7 +114,7 @@ export class ExactBankScorer {
       };
       const pages = Math.ceil(top / PAGE);
       const memory = new WebAssembly.Memory({ initial: pages, maximum: pages });
-      const instance = await WebAssembly.instantiate(module, { env: { memory } });
+      const instance = new WebAssembly.Instance(module, { env: { memory } });
       const matrix = new Float32Array(memory.buffer, at.bank, rows * KERNEL_DIM);
       matrix.set(bank.matrix);
       bank.matrix = matrix;

@@ -53,9 +53,9 @@ function loopSearch(bank: EmbeddingBank, embs: Float32Array, offsets: readonly n
 
 /** The kernel's answer for every look, through a recognizer, so its row identities are the
  *  recognizer's own. */
-async function kernelSearch(bank: EmbeddingBank, embs: Float32Array, offsets: readonly number[]): Promise<BankMatch[]> {
+function kernelSearch(bank: EmbeddingBank, embs: Float32Array, offsets: readonly number[]): BankMatch[] {
   const copy = { ...bank, matrix: bank.matrix.slice() };
-  const scorer = await ExactBankScorer.create(copy);
+  const scorer = ExactBankScorer.create(copy);
   expect(scorer).not.toBeNull();
   new EmbeddingRecognizer(copy, undefined, undefined, scorer);
   return scorer!.search(embs, offsets);
@@ -68,10 +68,10 @@ function looksOf(vectors: Float32Array[]): { embs: Float32Array; offsets: number
 }
 
 /** Kernel and loop agree on every look, compared with Object.is (toEqual on numbers). */
-async function agree(bank: EmbeddingBank, vectors: Float32Array[]): Promise<BankMatch[]> {
+function agree(bank: EmbeddingBank, vectors: Float32Array[]): BankMatch[] {
   const { embs, offsets } = looksOf(vectors);
   const want = loopSearch(bank, embs, offsets);
-  const got = await kernelSearch(bank, embs, offsets);
+  const got = kernelSearch(bank, embs, offsets);
   expect(got).toEqual(want);
   return got;
 }
@@ -106,30 +106,30 @@ describe("the kept kernel", () => {
 });
 
 describe("ExactBankScorer", () => {
-  it("agrees with the loop on a bank of scattered identities, an odd number of rows, any number of looks", async () => {
+  it("agrees with the loop on a bank of scattered identities, an odd number of rows, any number of looks", () => {
     const rows = randomRows(1001, 1);
     const next = generator(2);
     const ids = rows.map(() => `card-${Math.floor((next() + 1) * 18.5)}`);
     const bank = bankOf(rows, ids);
-    for (const count of [1, 7, 8, 9, 50]) await agree(bank, randomRows(count, 100 + count));
+    for (const count of [1, 7, 8, 9, 50]) agree(bank, randomRows(count, 100 + count));
     // Looks near bank rows: a clear best, rivals close behind.
     const near = rows.slice(0, 20).map((row, i) => unit(row.map((v, k) => v + 0.05 * Math.sin(i + k))));
-    await agree(bank, near);
+    agree(bank, near);
   });
 
-  it("agrees with the loop on an even number of rows", async () => {
+  it("agrees with the loop on an even number of rows", () => {
     const rows = randomRows(64, 3);
-    await agree(bankOf(rows, rows.map((_, r) => `card-${r % 5}`)), randomRows(13, 4));
+    agree(bankOf(rows, rows.map((_, r) => `card-${r % 5}`)), randomRows(13, 4));
   });
 
-  it("cuts a long batch into calls and keeps the order", async () => {
+  it("cuts a long batch into calls and keeps the order", () => {
     const rows = randomRows(41, 5);
     const bank = bankOf(rows, rows.map((_, r) => `card-${r % 7}`));
-    const got = await agree(bank, randomRows(KERNEL_MAX_LOOKS + 45, 6));
+    const got = agree(bank, randomRows(KERNEL_MAX_LOOKS + 45, 6));
     expect(got).toHaveLength(KERNEL_MAX_LOOKS + 45);
   });
 
-  it("keeps the loop's tie rule: the first strict maximum, and a tied row of another identity as the other", async () => {
+  it("keeps the loop's tie rule: the first strict maximum, and a tied row of another identity as the other", () => {
     const rows = randomRows(30, 7);
     rows[9] = rows[5]!.slice(); // a tie within one identity
     rows[20] = rows[12]!.slice(); // a tie across two identities
@@ -139,66 +139,66 @@ describe("ExactBankScorer", () => {
     ids[20] = "card-twin";
     ids[25] = "card-twin";
     const bank = bankOf(rows, ids);
-    const got = await agree(bank, [rows[5]!, rows[12]!, rows[20]!, rows[9]!]);
+    const got = agree(bank, [rows[5]!, rows[12]!, rows[20]!, rows[9]!]);
     expect(got.map((m) => m.bestRow)).toEqual([5, 12, 12, 5]);
     expect(got[1]!.other).toBe(got[1]!.best);
   });
 
-  it("sums in the loop's order: rows and looks whose sums depend on it", async () => {
+  it("sums in the loop's order: rows and looks whose sums depend on it", () => {
     // Values of very different sizes, so that another order of the additions rounds otherwise.
     const scale = (k: number): number => (k % 3 === 0 ? 1e6 : k % 3 === 1 ? 1 : 1e-6);
     const rows = randomRows(201, 8, scale);
     const bank = bankOf(rows, rows.map((_, r) => `card-${r % 11}`));
-    await agree(bank, [...randomRows(16, 9, scale), ...randomRows(16, 10, (k) => scale(D - 1 - k))]);
+    agree(bank, [...randomRows(16, 9, scale), ...randomRows(16, 10, (k) => scale(D - 1 - k))]);
   });
 
-  it("agrees on a bank of one identity (no other identity) and of one row", async () => {
+  it("agrees on a bank of one identity (no other identity) and of one row", () => {
     const rows = randomRows(17, 11);
-    const one = await agree(bankOf(rows, rows.map(() => "only")), randomRows(5, 12));
+    const one = agree(bankOf(rows, rows.map(() => "only")), randomRows(5, 12));
     expect(one.every((m) => m.other === -2)).toBe(true);
-    const single = await agree(bankOf([rows[0]!], ["only"]), [rows[0]!, ...randomRows(3, 13)]);
+    const single = agree(bankOf([rows[0]!], ["only"]), [rows[0]!, ...randomRows(3, 13)]);
     expect(single.every((m) => m.bestRow === 0)).toBe(true);
   });
 
-  it("agrees on a zero look and a look with no number in it", async () => {
+  it("agrees on a zero look and a look with no number in it", () => {
     const rows = randomRows(33, 14);
     const bank = bankOf(rows, rows.map((_, r) => `card-${r % 3}`));
-    const got = await agree(bank, [new Float32Array(D), new Float32Array(D).fill(Number.NaN), new Float32Array(D).fill(-0)]);
+    const got = agree(bank, [new Float32Array(D), new Float32Array(D).fill(Number.NaN), new Float32Array(D).fill(-0)]);
     expect(got[0]).toEqual({ bestRow: 0, best: 0, other: 0 });
     expect(got[1]).toEqual({ bestRow: -1, best: -2, other: -2 });
   });
 
-  it("holds the bank: bank.matrix becomes its copy, with the same values", async () => {
+  it("holds the bank: bank.matrix becomes its copy, with the same values", () => {
     const rows = randomRows(10, 15);
     const bank = bankOf(rows, rows.map((_, r) => `card-${r}`));
     const before = bank.matrix.slice();
     const old = bank.matrix;
-    const scorer = await ExactBankScorer.create(bank);
+    const scorer = ExactBankScorer.create(bank);
     expect(scorer).not.toBeNull();
     expect(bank.matrix).not.toBe(old);
     expect(bank.matrix).toEqual(before);
   });
 
-  it("is not made for rows of another length, or for an empty bank", async () => {
+  it("is not made for rows of another length, or for an empty bank", () => {
     const short: EmbeddingBank = { ids: ["a"], matrix: new Float32Array(64), dim: 64, version: 1, model: "test", preprocessing: "full128", tau: null };
-    expect(await ExactBankScorer.create(short)).toBeNull();
-    expect(await ExactBankScorer.create(bankOf([], []))).toBeNull();
+    expect(ExactBankScorer.create(short)).toBeNull();
+    expect(ExactBankScorer.create(bankOf([], []))).toBeNull();
   });
 
-  it("will not search before the identities are set", async () => {
+  it("will not search before the identities are set", () => {
     const rows = randomRows(4, 16);
-    const scorer = await ExactBankScorer.create(bankOf(rows, rows.map((_, r) => `card-${r}`)));
+    const scorer = ExactBankScorer.create(bankOf(rows, rows.map((_, r) => `card-${r}`)));
     expect(() => scorer!.search(rows[0]!, [0])).toThrow(/identities/);
   });
 });
 
 describe("EmbeddingRecognizer with the kernel", () => {
-  it("gives the same looks and pooled matches as with the loop", async () => {
+  it("gives the same looks and pooled matches as with the loop", () => {
     const rows = randomRows(301, 17);
     const ids = rows.map((_, r) => `card-${r % 29}`);
     const plain = new EmbeddingRecognizer(bankOf(rows, ids));
     const bank = bankOf(rows, ids);
-    const fast = new EmbeddingRecognizer(bank, undefined, undefined, await ExactBankScorer.create(bank));
+    const fast = new EmbeddingRecognizer(bank, undefined, undefined, ExactBankScorer.create(bank));
     expect([plain.search, fast.search]).toEqual(["loop", "wasm-simd"]);
     const near = rows.slice(0, 24).map((row, i) => unit(row.map((v, k) => v + 0.3 * Math.cos(3 * i + k))));
     const { embs, offsets } = looksOf(near);
