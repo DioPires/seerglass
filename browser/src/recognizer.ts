@@ -9,8 +9,12 @@
 //   the margin: the score minus the best similarity among rows of a different identity.
 // Printings of one card share an identity, so only a rival of another identity narrows the
 // margin.
+//
+// Given an ExactBankScorer (exact-scorer.ts), every search runs there: the same results, bit for
+// bit, several looks per pass over the bank. Without one, the loop in `topAndOther` answers.
 
 import type { EmbeddingBank } from "./bank.js";
+import type { BankMatch, ExactBankScorer } from "./exact-scorer.js";
 import { IdentityMap } from "./identity.js";
 import { PREPROCESSING, type PreprocessingContract } from "./preprocess.js";
 
@@ -66,10 +70,15 @@ export class EmbeddingRecognizer {
   private readonly scratch: Float64Array;
   private readonly contract: PreprocessingContract;
 
+  /**
+   * `scorer`, when given, was made for this `bank` (ExactBankScorer.create) and is not shared
+   * with another recognizer: the recognizer sets its row identities.
+   */
   constructor(
     private readonly bank: EmbeddingBank,
     readonly rule: AcceptRule = DEFAULT_ACCEPT,
     identity: IdentityMap = new IdentityMap(),
+    private readonly scorer: ExactBankScorer | null = null,
   ) {
     this.contract = PREPROCESSING[bank.preprocessing];
     this.rowShown = bank.ids.map((id) => identity.shown(id));
@@ -86,6 +95,12 @@ export class EmbeddingRecognizer {
       this.rowIdent[r] = k;
     }
     this.scratch = new Float64Array(bank.ids.length);
+    scorer?.setIdentities(this.rowIdent);
+  }
+
+  /** Where the bank is searched: the WebAssembly kernel, or the loop. */
+  get search(): "wasm-simd" | "loop" {
+    return this.scorer ? "wasm-simd" : "loop";
   }
 
   /** Rows in the bank. */
@@ -132,9 +147,12 @@ export class EmbeddingRecognizer {
     return { bestRow, best, other };
   }
 
-  /** One look at the embedding stored at `offset` in `embs`. */
-  matchScored(embs: Float32Array, offset: number): ScoredMatch {
-    const { bestRow, best, other } = this.topAndOther(embs, offset);
+  /** `topAndOther` for the vector at each of `offsets` in `embs`, in order. */
+  private searchAll(embs: Float32Array, offsets: readonly number[]): BankMatch[] {
+    return this.scorer ? this.scorer.search(embs, offsets) : offsets.map((offset) => this.topAndOther(embs, offset));
+  }
+
+  private toScored({ bestRow, best, other }: BankMatch): ScoredMatch {
     const topId = this.bank.ids[bestRow]!;
     return {
       cardId: best >= this.rule.tau ? topId : null,
@@ -144,6 +162,16 @@ export class EmbeddingRecognizer {
       displayId: this.rowShown[bestRow]!,
       margin: best - other,
     };
+  }
+
+  /** One look at the embedding stored at `offset` in `embs`. */
+  matchScored(embs: Float32Array, offset: number): ScoredMatch {
+    return this.matchScoredBatch(embs, [offset])[0]!;
+  }
+
+  /** `matchScored` for the embedding at each of `offsets` in `embs`, in order, in one search. */
+  matchScoredBatch(embs: Float32Array, offsets: readonly number[]): ScoredMatch[] {
+    return this.searchAll(embs, offsets).map((m) => this.toScored(m));
   }
 
   // ----------------------------------------------------------- the geometric stage's seams
@@ -267,9 +295,18 @@ export class EmbeddingRecognizer {
    * for the best row.
    */
   matchPooled(vec: Float32Array, delta: number = this.rule.delta): PooledMatch {
-    const { bestRow, best, other } = this.topAndOther(vec, 0);
-    const margin = best - other;
-    const cardId = best >= this.rule.tau && margin >= delta ? this.rowShown[bestRow]! : null;
-    return { cardId, similarity: best, margin };
+    return this.matchPooledBatch([vec], delta)[0]!;
+  }
+
+  /** `matchPooled` for each of `vectors` (each `dim` values long), in order, in one search. */
+  matchPooledBatch(vectors: readonly Float32Array[], delta: number = this.rule.delta): PooledMatch[] {
+    const dim = this.bank.dim;
+    const packed = new Float32Array(vectors.length * dim);
+    vectors.forEach((v, i) => packed.set(v.subarray(0, dim), i * dim));
+    return this.searchAll(packed, vectors.map((_, i) => i * dim)).map(({ bestRow, best, other }) => {
+      const margin = best - other;
+      const cardId = best >= this.rule.tau && margin >= delta ? this.rowShown[bestRow]! : null;
+      return { cardId, similarity: best, margin };
+    });
   }
 }

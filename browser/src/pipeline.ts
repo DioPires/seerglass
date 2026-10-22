@@ -22,6 +22,7 @@ import type { EmbeddingBank } from "./bank.js";
 import { clipToFrame, DEFAULT_MIN_CROP_PX, FACE_CLASS, splitByClass, validBox } from "./detector/decode.js";
 import type { Frame, FrameDetector } from "./detector/detector.js";
 import type { BatchEmbedder } from "./embedder.js";
+import type { ExactBankScorer } from "./exact-scorer.js";
 import type { GeometricEvidence } from "./geometric/fusion.js";
 import type { GeometricStage } from "./geometric/stage.js";
 import type { LayerCard, StageSize } from "./hover-geometry.js";
@@ -118,6 +119,9 @@ export interface PipelineOptions {
   classNames?: readonly string[];
   faceClass?: number;
   minCropPx?: number;
+  /** The bank search in WebAssembly, made for `bank` (ExactBankScorer.create); without it the
+   *  recognizer's loop searches, with the same results. */
+  scorer?: ExactBankScorer | null;
   /** A clock in ms, for the timings. */
   now?: () => number;
   /** The optional geometric stage (geometric/stage.ts). Without it the pipeline is exactly what
@@ -175,13 +179,21 @@ export class Pipeline {
     this.now = options.now ?? (() => performance.now());
     this.geometric = options.geometric ?? null;
     const identity = new IdentityMap(options.identityGroups ?? null, (id) => this.names.has(id), options.identityDisplay ?? "best-printing");
-    this.recognizer = new EmbeddingRecognizer(options.bank, options.accept ?? DEFAULT_ACCEPT, identity);
-    this.tracker = new Tracker((pooled) => this.recognizer.matchPooled(pooled).cardId);
+    this.recognizer = new EmbeddingRecognizer(options.bank, options.accept ?? DEFAULT_ACCEPT, identity, options.scorer ?? null);
+    this.tracker = new Tracker(
+      (pooled) => this.recognizer.matchPooled(pooled).cardId,
+      (pooled) => this.recognizer.matchPooledBatch(pooled).map((m) => m.cardId),
+    );
   }
 
   /** Rows in the bank. */
   get size(): number {
     return this.recognizer.size;
+  }
+
+  /** Where the bank is searched: the WebAssembly kernel, or the loop. */
+  get bankSearch(): "wasm-simd" | "loop" {
+    return this.recognizer.search;
   }
 
   /** The stage that failed during a frame since the last call, and its error, or null. The

@@ -20,6 +20,7 @@ import { type EmbeddingBank, parseBank } from "./bank.js";
 import { FACE_CLASS } from "./detector/decode.js";
 import type { DetectorSettings, FrameDetector } from "./detector/detector.js";
 import type { BatchEmbedder, EmbedderSettings } from "./embedder.js";
+import { ExactBankScorer } from "./exact-scorer.js";
 import { type HoverSelection, isHoverSelection } from "./hover-layer.js";
 import { groupsByKey, type IdentityDisplay, type IdentityGroups, identityOf, type IdentityRule, isIdentityRule, parseIdentityGroups } from "./identity.js";
 import { EXECUTION_PROVIDERS, type ExecutionProvider } from "./providers.js";
@@ -705,6 +706,7 @@ export async function buildReleasePipeline(
     if (!embedder) return await fail("recognizer: the model did not initialize on any execution provider, or is not the model the release describes");
     detector = await factories.detector(data.detectorBytes, release.detector.settings, providers);
     if (!detector) return await fail("detector: the model did not initialize on any execution provider, or is not the model the release describes");
+    const scorer = await ExactBankScorer.create(data.bank);
     const pipeline = new Pipeline({
       detector,
       embedder,
@@ -717,6 +719,7 @@ export async function buildReleasePipeline(
       classNames: release.detector.settings.classes,
       faceClass: release.detector.settings.faceClass,
       minCropPx: release.detector.settings.minCropPx,
+      scorer,
     });
     return { pipeline, embedder, detector, providers: [...providers] };
   } catch (error) {

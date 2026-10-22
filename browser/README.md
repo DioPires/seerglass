@@ -971,6 +971,7 @@ release's hover selection or any of the three.
 | `preprocess.ts` | The `full128` crop contract and quarter turns | `cardvision/core/preprocess.py` |
 | `bank.ts`, `identity.ts` | The bank file, and the identity groups under the rule the catalog states | `cardvision/core/bank.py`, `cardvision/core/catalog.py` |
 | `recognizer.ts`, `recognition.ts` | Best match and margin; the accept rule; the rotation retry; suppression | `cardvision/recognize/` |
+| `exact-scorer.ts`, `exact-kernel.c`, `exact-kernel-wasm.ts` | The bank search in WebAssembly SIMD: a frame's looks in one pass over the bank, with the recognizer's own arithmetic and tie rule, so the answers are the loop's bit for bit | none: the loop in `recognizer.ts` is the reference |
 | `hover-layer.ts`, `hover-geometry.ts`, `scene.ts` | The three hover selections and the hit test | `cardvision/evaluate/hover.py` |
 | `tracker.ts`, `temporal-gate.ts` | Tracks with pooled identities; when the track layer is shown | none: the Python command judges each frame alone |
 | `cadence.ts`, `frame-scheduler.ts` | When a frame is analyzed: fast around pointer activity, slow while a tooltip shows, idle otherwise; the staleness rule | none |
@@ -1007,6 +1008,15 @@ The two pages are in `demo/`, apart from the runtime too:
 | `score-view.ts` | What the scoring page says before a run and after it: the count of rows and matched videos, the result card, the command |
 | `page.ts` | What the two pages share, and what the demo page's address may ask of it |
 | `theme.css`, `demo.css` | The look: the colors, radii and spacing in `theme.css`, the rest in `demo.css` |
+
+The bank search runs in a small WebAssembly module (`src/exact-kernel.c`, about 3 KB compiled)
+whenever the browser has WebAssembly SIMD, and in the recognizer's loop otherwise, with the same
+answers. The repository holds no binary file, so the module is kept as base64 in
+`src/exact-kernel-wasm.ts`, written by `node scripts/build-kernel.mjs` (clang with the wasm32
+target and `wasm-ld`). Rebuild it after changing the C source; `--check` says whether the kept
+module is a fresh build. The tests compare the kept bytes with a fresh build only where the
+installed clang is the one recorded in the module, and compare the kernel's answers with the
+loop's everywhere.
 
 `scripts/pages.mjs` builds the hosted demo from the demo page (`npm run build:pages`), with its
 games (`HOSTED_GAMES`), and `scripts/pages-preview.mjs` serves it on this machine
