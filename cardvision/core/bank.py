@@ -20,6 +20,30 @@ Half floats keep the file small, at the cost that a stored row is no longer exac
 length. Every reader therefore renormalizes after decoding, and a tool that wants to score
 against what a reader will see applies the same round trip first (``fp16_roundtrip``).
 
+The packed bank
+---------------
+A smaller form of a JSON bank, for shipping in a release (``cardvision pack-bank``): one binary
+file, every value a signed 8-bit integer. It is made from a JSON bank and never edited; the
+JSON bank stays the one that is built, extended and checked. In order:
+
+* 8 bytes, the magic ``89 63 76 62 61 6E 6B 0A`` (``PACKED_MAGIC``);
+* ``H``, the length of the header in bytes, an unsigned 32-bit little-endian integer;
+* the header: ``H`` bytes of UTF-8 JSON, one object;
+* ``N * dim`` signed 8-bit values, row-major, row ``i`` belonging to ``ids[i]``.
+
+The file ends there. The header holds the source bank's keys in the source's order, except
+``entries``, with ``kind`` ``"embedding-bank-packed"``, ``schemaVersion`` 1, ``dtype``
+``"int8"``, ``levels`` (no value's magnitude exceeds it, 1 to 127), ``source`` (the SHA-256
+and ``dtype`` of the JSON bank file it was packed from) and ``ids`` (the row ids in row
+order). The source's ``version`` is kept: it is the same bank in another storage. No row
+records its image (``artV``).
+
+Each row is scaled so that its largest magnitude becomes ``levels`` and rounded to the nearest
+integer (``pack_bank``). No scale is stored, since every reader renormalizes. Decoding is the
+same as for fp16: widen to float64, take the norm in float64, divide, narrow to float32. The
+squares and their sums are small integers, so the norm is exact and every runtime gets the
+same matrix.
+
 Identity groups say which card ids count as the same card when a match is judged: confusing
 two cards of one identity is not an error and the margin between them is not evidence of doubt.
 Which cards are one identity is the catalog's rule (``cardvision.core.catalog``,
@@ -33,6 +57,7 @@ import binascii
 import hashlib
 import json
 import re
+import struct
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -43,6 +68,16 @@ from cardvision.core.catalog import groups_by_key
 
 # Stored element type: IEEE 754 half precision, little-endian, on every platform.
 VECTOR_DTYPE = np.dtype("<f2")
+
+# The packed bank (see the module docstring).
+PACKED_MAGIC = b"\x89cvbank\n"
+PACKED_KIND = "embedding-bank-packed"
+PACKED_SCHEMA_VERSION = 1
+PACKED_DTYPE = np.dtype("i1")
+PACKED_DTYPE_NAME = "int8"
+PACKED_LEVELS = 63
+_PACKED_PREFIX = len(PACKED_MAGIC) + 4
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 # The entry key that records a row's source image, and the form of its value.
 ART_VERSION_KEY = "artV"
@@ -143,6 +178,8 @@ def stored_vectors(doc: Mapping[str, Any]) -> tuple[list[str], np.ndarray]:
     entries = doc.get("entries") if isinstance(doc, Mapping) else None
     if not isinstance(entries, list):
         raise ValueError('a bank document needs an "entries" list')
+    if doc.get("dtype", "fp16") != "fp16":
+        raise ValueError(f'a JSON bank stores fp16 values, this one says "dtype": {json.dumps(doc.get("dtype"))}')
     ids: list[str] = []
     rows: list[np.ndarray] = []
     for position, entry in enumerate(entries):
@@ -199,22 +236,124 @@ def decode_bank(doc: Mapping[str, Any]) -> tuple[list[str], np.ndarray]:
     them score against the same matrix.
     """
     ids, stored = stored_vectors(doc)
+    return ids, _decode_rows(ids, stored)
+
+
+def _decode_rows(ids: Sequence[str], stored: np.ndarray) -> np.ndarray:
+    """Stored rows (fp16 or int8) as float32 unit rows: widened to float64, divided by their
+    float64 norm, narrowed. The same arithmetic for both element types."""
     rows = []
-    for card_id, half in zip(ids, stored):
-        v = half.astype(np.float64)
+    for card_id, values in zip(ids, stored):
+        v = values.astype(np.float64)
         norm = np.sqrt(float(np.sum(v * v)))
         if not np.isfinite(norm) or norm == 0.0:
             raise ValueError(f"card {card_id!r} has a stored vector that cannot be normalized")
         rows.append((v / norm).astype(np.float32))
     if not rows:
-        return ids, np.zeros((0, 0), dtype=np.float32)
-    return ids, np.stack(rows)
+        return np.zeros((0, 0), dtype=np.float32)
+    return np.stack(rows)
+
+
+def is_packed(body: bytes) -> bool:
+    """Whether the bytes of a file are a packed bank (they start with ``PACKED_MAGIC``)."""
+    return body[:len(PACKED_MAGIC)] == PACKED_MAGIC
+
+
+def _whole(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def pack_bank(doc: Mapping[str, Any], source_sha256: str, levels: int = PACKED_LEVELS) -> bytes:
+    """The packed form of a JSON bank document whose file has SHA-256 ``source_sha256``.
+
+    Each decoded row ``v`` (``decode_bank``) is stored as ``rint(v * levels / max|v|)``, in
+    float64. The same document and levels always give the same bytes.
+    """
+    if not _whole(levels) or not 1 <= levels <= 127:
+        raise ValueError(f"levels must be a whole number from 1 to 127, got {levels!r}")
+    if not isinstance(source_sha256, str) or not _SHA256.fullmatch(source_sha256):
+        raise ValueError("source_sha256 must be 64 lower-case hexadecimal digits")
+    ids, rows = decode_bank(doc)
+    if not ids:
+        raise ValueError("an empty bank cannot be packed")
+    v = rows.astype(np.float64)
+    values = np.rint(v * levels / np.abs(v).max(axis=1, keepdims=True)).astype(PACKED_DTYPE)
+    header: dict[str, Any] = {key: value for key, value in doc.items() if key != "entries"}
+    header.update({"kind": PACKED_KIND, "schemaVersion": PACKED_SCHEMA_VERSION, "dtype": PACKED_DTYPE_NAME,
+                   "levels": levels, "source": {"sha256": source_sha256, "dtype": doc.get("dtype", "fp16")},
+                   "ids": list(ids)})
+    text = json.dumps(header, ensure_ascii=False, allow_nan=False, separators=(",", ":")).encode("utf-8")
+    return PACKED_MAGIC + struct.pack("<I", len(text)) + text + values.tobytes()
+
+
+def unpack_bank(body: bytes) -> tuple[dict[str, Any], list[str], np.ndarray]:
+    """The header, the row ids and the ``(N, dim)`` int8 values of a packed bank, exactly as
+    stored. Anything that is not a whole, well-formed packed bank raises ``ValueError``."""
+    if not is_packed(body) or len(body) < _PACKED_PREFIX:
+        raise ValueError("not a packed bank (it does not start with the packed bank's magic number)")
+    (length,) = struct.unpack_from("<I", body, len(PACKED_MAGIC))
+    end = _PACKED_PREFIX + length
+    if length == 0 or end > len(body):
+        raise ValueError(f"the header length {length} does not fit in the file's {len(body)} bytes")
+    try:
+        header = json.loads(body[_PACKED_PREFIX:end].decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"the header is not UTF-8 JSON: {error}") from None
+    if not isinstance(header, dict):
+        raise ValueError("the header is not a JSON object")
+    if header.get("kind") != PACKED_KIND or header.get("schemaVersion") != PACKED_SCHEMA_VERSION:
+        raise ValueError(f'the header is not "kind": "{PACKED_KIND}" with "schemaVersion": {PACKED_SCHEMA_VERSION}')
+    if header.get("dtype") != PACKED_DTYPE_NAME:
+        raise ValueError(f'a packed bank stores int8 values, this one says "dtype": {json.dumps(header.get("dtype"))}')
+    if "entries" in header:
+        raise ValueError('a packed bank\'s header has no "entries": its rows follow the header')
+    dim, levels, ids, source = header.get("dim"), header.get("levels"), header.get("ids"), header.get("source")
+    if not _whole(dim) or dim <= 0:
+        raise ValueError('"dim" must be a whole number above 0')
+    if not _whole(levels) or not 1 <= levels <= 127:
+        raise ValueError('"levels" must be a whole number from 1 to 127')
+    if not isinstance(ids, list) or not ids or not all(isinstance(card_id, str) for card_id in ids):
+        raise ValueError('"ids" must be a non-empty list of card id strings')
+    if not isinstance(source, dict) or not isinstance(source.get("sha256"), str) \
+            or not _SHA256.fullmatch(source["sha256"]) or not isinstance(source.get("dtype"), str):
+        raise ValueError('"source" must give the "sha256" (64 lower-case hexadecimal digits) and "dtype" of '
+                         "the bank it was packed from")
+    if len(body) - end != len(ids) * dim:
+        raise ValueError(f"{len(ids)} rows of {dim} values need {len(ids) * dim} bytes after the header, "
+                         f"the file has {len(body) - end}")
+    values = np.frombuffer(body, dtype=PACKED_DTYPE, offset=end).reshape(len(ids), dim).copy()
+    low, high = int(values.min()), int(values.max())
+    if low == -128:
+        raise ValueError("a value is -128, which packing never writes")
+    if max(-low, high) > levels:
+        raise ValueError(f"a value's magnitude, {max(-low, high)}, exceeds levels {levels}")
+    return header, list(ids), values
+
+
+def read_bank_bytes(body: bytes) -> tuple[dict[str, Any], list[str], np.ndarray]:
+    """The document, the card ids and the float32 unit rows of a bank file of either kind.
+
+    For a JSON bank the document is the whole of it; for a packed bank, its header (which
+    lists the ids and has no entries). Raises ``ValueError`` for anything else.
+    """
+    if is_packed(body):
+        header, ids, values = unpack_bank(body)
+        return header, ids, _decode_rows(ids, values)
+    try:
+        doc = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError(f"neither a packed bank nor JSON: {error}") from None
+    ids, rows = decode_bank(doc)
+    return doc, ids, rows
 
 
 def load_bank(path: str | Path) -> tuple[list[str], np.ndarray, dict[str, Any]]:
-    """Read a bank file: card ids, decoded float32 unit rows, and the whole document."""
-    doc = json.loads(Path(path).read_text(encoding="utf-8"))
-    ids, rows = decode_bank(doc)
+    """Read a bank file, JSON or packed: card ids, decoded float32 unit rows, and the document
+    (``read_bank_bytes``)."""
+    try:
+        doc, ids, rows = read_bank_bytes(Path(path).read_bytes())
+    except ValueError as error:
+        raise ValueError(f"{Path(path).name}: {error}") from None
     return ids, rows, doc
 
 

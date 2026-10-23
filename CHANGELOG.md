@@ -21,9 +21,14 @@ break the public surface; this file names each break and how to migrate.
 - Newcomer documentation: a start-here page, a guide for your own game, and the guide split into
   train, measure and extension pages.
 - `CHANGELOG.md`, `RELEASING.md` and `docs/stability.md`; a monthly grouped Dependabot update.
+- `cardvision pack-bank` and the packed bank: a JSON bank written as one binary file of 8-bit
+  values, which releases, the recognizer and the browser runtime read (`readBankFile`,
+  `parsePackedBank`). Tools that need the JSON bank refuse a packed one by name.
 
 ### Changed
 
+- The browser runtime searches the bank in WebAssembly SIMD where the browser has it: the same
+  answers as its loop, bit for bit, about 8 times faster per look on a 100,000-row bank.
 - `cardvision` with no arguments, and the end of `--help`, list the commands in groups.
 - CI runs the Python tests on every core with pytest-xdist.
 - The sign-off check skips commits authored by Dependabot.

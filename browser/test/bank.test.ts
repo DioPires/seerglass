@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from "vitest";
 
-import { decodeFp16Base64, type EmbeddingBank, parseBank } from "../src/bank.js";
+import { decodeFp16Base64, type EmbeddingBank, isPackedBank, parseBank, parsePackedBank, readBankFile } from "../src/bank.js";
 import { groupsByName, IdentityMap, parseIdentityGroups } from "../src/identity.js";
 import { DEFAULT_ACCEPT, EmbeddingRecognizer, NO_OTHER_IDENTITY } from "../src/recognizer.js";
 import { axis, blend, contract, float32FromHex, sha } from "./support.js";
@@ -78,6 +78,106 @@ describe("the bank file", () => {
     for (const change of bad) expect(parseBank(bankDoc(change)), JSON.stringify(change).slice(0, 80)).toBeNull();
     expect(parseBank(null)).toBeNull();
     expect(parseBank(bankDoc())).not.toBeNull();
+  });
+});
+
+describe("the packed bank file", () => {
+  const packed = contract.packedBank;
+  const file = (): Uint8Array => new Uint8Array(Buffer.from(packed.file, "base64"));
+
+  /** The file's header and the bytes after it. */
+  function split(bytes: Uint8Array): { header: Record<string, unknown>; values: Uint8Array } {
+    const length = new DataView(bytes.buffer, bytes.byteOffset).getUint32(8, true);
+    return { header: JSON.parse(new TextDecoder().decode(bytes.subarray(12, 12 + length))), values: bytes.slice(12 + length) };
+  }
+
+  /** A packed file of this header and these value bytes. */
+  function assemble(header: unknown, values: Uint8Array): Uint8Array {
+    const text = new TextEncoder().encode(JSON.stringify(header));
+    const out = new Uint8Array(12 + text.length + values.length);
+    out.set(file().subarray(0, 8));
+    new DataView(out.buffer).setUint32(8, text.length, true);
+    out.set(text, 12);
+    out.set(values, 12 + text.length);
+    return out;
+  }
+
+  it("reads the Python package's packed bank to the same float32 matrix, bit for bit", () => {
+    const bytes = file();
+    expect(sha(bytes)).toBe(packed.fileSha256);
+    expect(isPackedBank(bytes)).toBe(true);
+    const bank = parsePackedBank(bytes)!;
+    expect(bank.ids).toEqual(packed.ids);
+    expect([bank.dim, bank.version, bank.model, bank.preprocessing, bank.tau]).toEqual([128, 3, "récognizer ü", "full128", null]);
+    expect(sha(bank.matrix)).toBe(packed.matrixSha256);
+    expect(Buffer.from(split(bytes).values).toString("hex")).toBe(packed.values);
+    expect(readBankFile(bytes)).toEqual(bank);
+  });
+
+  it("reads a JSON bank as parseBank does, and tells the two kinds apart by the magic number", () => {
+    const json = new TextEncoder().encode(JSON.stringify(bankDoc()));
+    expect(isPackedBank(json)).toBe(false);
+    expect(readBankFile(json)).toEqual(parseBank(bankDoc()));
+    expect(readBankFile(new TextEncoder().encode("not json"))).toBeNull();
+    expect(parseBank(bankDoc({ dtype: "int8" }))).toBeNull();
+    expect(parseBank(bankDoc({ dtype: "fp16" }))).not.toBeNull();
+  });
+
+  it("refuses the whole file on anything it cannot read", () => {
+    const { header, values } = split(file());
+    const withHeader = (change: (h: Record<string, any>) => void): Uint8Array => {
+      const h = structuredClone(header) as Record<string, any>;
+      change(h);
+      return assemble(h, values);
+    };
+    const withValue = (at: number, value: number): Uint8Array => {
+      const v = values.slice();
+      new Int8Array(v.buffer)[at] = value;
+      return assemble(header, v);
+    };
+    const whole = file();
+    const prefix = (length: number, body: number[]): Uint8Array => {
+      const out = new Uint8Array(12 + body.length);
+      out.set(whole.subarray(0, 8));
+      new DataView(out.buffer).setUint32(8, length, true);
+      out.set(body, 12);
+      return out;
+    };
+    const otherMagic = whole.slice();
+    otherMagic[6] = 0x4b;
+    const bad: Record<string, Uint8Array> = {
+      "another magic": otherMagic,
+      "a short file": whole.subarray(0, 10),
+      "a header of no bytes": prefix(0, Array(64).fill(0)),
+      "a header past the end": prefix(1000, [0x7b, 0x7d]),
+      "a header that is not UTF-8": prefix(2, [0xff, 0xfe]),
+      "a header that is not JSON": prefix(3, [0x7b, 0x78, 0x7d]),
+      "a header that is an array": prefix(2, [0x5b, 0x5d]),
+      "another kind": withHeader((h) => (h.kind = "embedding-bank")),
+      "another schema version": withHeader((h) => (h.schemaVersion = 2)),
+      "fp16 values": withHeader((h) => (h.dtype = "fp16")),
+      "entries in the header": withHeader((h) => (h.entries = [])),
+      "a dim of 0": withHeader((h) => (h.dim = 0)),
+      "a dim given as true": withHeader((h) => (h.dim = true)),
+      "levels of 0": withHeader((h) => (h.levels = 0)),
+      "levels of 128": withHeader((h) => (h.levels = 128)),
+      "levels of 1.5": withHeader((h) => (h.levels = 1.5)),
+      "levels given as true": withHeader((h) => (h.levels = true)),
+      "no ids": withHeader((h) => (h.ids = [])),
+      "an id that is not a string": withHeader((h) => (h.ids[1] = 7)),
+      "no source": withHeader((h) => delete h.source),
+      "a source hash in capitals": withHeader((h) => (h.source.sha256 = h.source.sha256.toUpperCase())),
+      "a source without its dtype": withHeader((h) => delete h.source.dtype),
+      "another preprocessing": withHeader((h) => (h.preprocessing = "another-contract")),
+      "one trailing byte": assemble(header, Uint8Array.from([...values, 0])),
+      "one byte missing": assemble(header, values.subarray(0, values.length - 1)),
+      "a row too many for the ids": withHeader((h) => h.ids.pop()),
+      "a value of -128": withValue(5, -128),
+      "a value beyond the levels": withValue(5, 64),
+      "a row of zeros": assemble(header, Uint8Array.from(values, (v, i) => (i >= 128 && i < 256 ? 0 : v))),
+    };
+    expect(parsePackedBank(assemble(header, values))).toEqual(parsePackedBank(whole));
+    for (const [name, bytes] of Object.entries(bad)) expect(readBankFile(bytes), name).toBeNull();
   });
 });
 

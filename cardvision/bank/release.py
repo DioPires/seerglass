@@ -52,15 +52,16 @@ Shape
     ``preprocessing`` is the contract a crop goes through before the model
     (``cardvision.core.preprocess``); it has to be the one the bank was built with.
 ``bank`` and ``identity``
-    The bank file and its identity groups (``cardvision.bank.build``). A release does not
-    require the bank's rows to record their source image (``artV``); ``bank_image_records``
-    counts the rows that do. ``identity.level`` is the identity rule of the release's
-    catalog (``cardvision.core.catalog``, "Identity"): ``name``, where printings that share
-    a catalog name are one identity, or ``printing``, where an entry and the entries whose
-    ``printingOf`` names it are one identity. The level, the groups file's own ``rule.level``
-    and the catalog's rule must all agree. ``identity.display`` says which id is shown for a
-    match: ``best-printing`` shows the printing whose bank row matched best, ``representative``
-    shows the group's representative.
+    The bank file and its identity groups (``cardvision.bank.build``). The bank is a JSON bank
+    or a packed bank (``cardvision.core.bank``, ``cardvision pack-bank``); the block reads the
+    same either way. A release does not require the bank's rows to record their source image
+    (``artV``); ``bank_image_records`` counts the rows that do. ``identity.level`` is the
+    identity rule of the release's catalog (``cardvision.core.catalog``, "Identity"): ``name``,
+    where printings that share a catalog name are one identity, or ``printing``, where an entry
+    and the entries whose ``printingOf`` names it are one identity. The level, the groups
+    file's own ``rule.level`` and the catalog's rule must all agree. ``identity.display`` says
+    which id is shown for a match: ``best-printing`` shows the printing whose bank row matched
+    best, ``representative`` shows the group's representative.
 ``catalog``
     The game's catalog file. Every bank id must be in it.
 ``accept``
@@ -106,7 +107,15 @@ from cardvision.bank.build import (
     preprocessing_descriptor,
 )
 from cardvision.bank.documents import canonical_bytes, read_json, sha256_hex, write_document
-from cardvision.core.bank import ART_VERSION_KEY, IdentityGroups, decode_bank, is_art_version
+from cardvision.core.bank import (
+    ART_VERSION_KEY,
+    IdentityGroups,
+    decode_bank,
+    is_art_version,
+    is_packed,
+    read_bank_bytes,
+    unpack_bank,
+)
 from cardvision.core.catalog import IDENTITY_NAME, IDENTITY_RULES, CatalogError, parse_catalog
 from cardvision.core.constants import DETECTOR_FACE_CLASS, DETECTOR_MIN_CROP_PX, DETECTOR_PARITY_SCORE_FLOOR
 from cardvision.core.preprocess import FULL128
@@ -462,6 +471,37 @@ def _parse(body: bytes | None, label: str, errors: list[str]) -> Any:
     return doc
 
 
+def _bank_header(body: bytes | None, errors: list[str]) -> Any:
+    """The bank file's document: the JSON bank, or a packed bank's header (checked whole)."""
+    if body is None or not is_packed(body):
+        return _parse(body, "bank", errors)
+    try:
+        return unpack_bank(body)[0]
+    except ValueError as error:
+        errors.append(f"bank: {error}")
+        return None
+
+
+def _read_bank(body: bytes | None, errors: list[str]) -> tuple[Any, list[str] | None, Any]:
+    """The bank file's document (``_bank_header``), card ids and decoded rows; the ids and rows
+    are None when the rows cannot be read."""
+    if body is not None and is_packed(body):
+        try:
+            return read_bank_bytes(body)
+        except ValueError as error:
+            errors.append(f"bank: {error}")
+            return None, None, None
+    doc = _parse(body, "bank", errors)
+    if doc is None:
+        return None, None, None
+    try:
+        ids, rows = decode_bank(doc)
+    except ValueError as error:
+        errors.append(f"bank: {error}")
+        return doc, None, None
+    return doc, ids, rows
+
+
 def release_errors(doc: Any, root: str | Path) -> list[str]:
     """Every reason a release document cannot be used; an empty list means it can.
 
@@ -543,18 +583,16 @@ def release_errors(doc: Any, root: str | Path) -> list[str]:
         errors.append("runtime.analysisWidth must give whole numbers min <= max above 0")
 
     # -- the bank, against the recognizer and the accept rule
-    bank_doc = _parse(bank_body, "bank", errors)
-    bank_ids: list[str] | None = None
+    bank_doc, bank_ids, rows = _read_bank(bank_body, errors)
     if bank_doc is not None:
-        try:
-            bank_ids, rows = decode_bank(bank_doc)
-        except ValueError as error:
-            errors.append(f"bank: {error}")
-            rows = None
-        entries = bank_doc.get("entries") if isinstance(bank_doc.get("entries"), list) else []
-        cards = len({entry.get("cardId") for entry in entries if isinstance(entry, Mapping)})
+        packed = bank_body is not None and is_packed(bank_body)
+        if packed:
+            entries, cards = bank_doc["ids"], len(set(bank_doc["ids"]))
+        else:
+            entries = bank_doc.get("entries") if isinstance(bank_doc.get("entries"), list) else []
+            cards = len({entry.get("cardId") for entry in entries if isinstance(entry, Mapping)})
         checks = [
-            (bank_doc.get("kind") == BANK_KIND, f'bank: the file is not an "{BANK_KIND}" document'),
+            (packed or bank_doc.get("kind") == BANK_KIND, f'bank: the file is not an "{BANK_KIND}" document'),
             (bank_doc.get("version") == bank.get("version") and _is_positive_int(bank.get("version")),
              "bank.version differs from the bank file's, or is not a whole number above 0"),
             (bank_doc.get("model") == rec.get("version"),
@@ -734,7 +772,7 @@ def compose_release(
     except ValueError as error:
         raise ReleaseError(f"recognizer: {error}") from None
     problems: list[str] = []
-    bank_doc = _parse(bank_body, "bank", problems) or {}
+    bank_doc = _bank_header(bank_body, problems) or {}
     groups_doc = _parse(groups_body, "identity groups", problems) or {}
     cat_doc = _parse(cat_body, "catalog", problems) or {}
     if problems:
@@ -829,7 +867,17 @@ def bank_image_records(doc: Mapping[str, Any], root: str | Path) -> tuple[int, i
     ``doc`` is a release document that passed ``release_errors`` and ``root`` the folder it is
     in. A row records its image when its entry has an ``artV`` (``cardvision.core.bank``). This
     is a count for the reader, not a check: a release does not require the field, and a bank
-    without it is as valid as before.
+    without it is as valid as before. No row of a packed bank records it.
     """
-    entries = read_json(Path(root) / doc["bank"]["path"]).get("entries", [])
+    body = (Path(root) / doc["bank"]["path"]).read_bytes()
+    if is_packed(body):
+        return 0, len(unpack_bank(body)[1])
+    entries = json.loads(body).get("entries", [])
     return sum(1 for entry in entries if is_art_version(entry.get(ART_VERSION_KEY))), len(entries)
+
+
+def packed_bank_header(doc: Mapping[str, Any], root: str | Path) -> dict[str, Any] | None:
+    """The header of a release's bank when it is a packed bank (``cardvision.core.bank``), else
+    None. ``doc`` is a release document that passed ``release_errors``."""
+    body = (Path(root) / doc["bank"]["path"]).read_bytes()
+    return unpack_bank(body)[0] if is_packed(body) else None

@@ -21,7 +21,7 @@ export { type ClientBox, createSession, type Session, type SessionOptions, type 
 export { type BoxResult, type FaceResult, type FrameAnalysis, hoverAt, hoverCardsOf, Pipeline, type PipelineOptions } from "./pipeline.js";
 
 export { type AABB, type Candidate, iou, nonMaxSuppression, type Rect } from "./boxes.js";
-export { type EmbeddingBank, parseBank } from "./bank.js";
+export { type EmbeddingBank, parseBank, parsePackedBank, readBankFile } from "./bank.js";
 export { type AnalysisMode, cadenceMs } from "./cadence.js";
 export { analysisSize, captureFrame, type FrameSource, MAX_ANALYSIS_WIDTH, MIN_ANALYSIS_WIDTH } from "./capture.js";
 export { type DecodeSettings, decodeDetections, DEFAULT_DECODE, validBox } from "./detector/decode.js";

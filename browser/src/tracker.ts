@@ -6,8 +6,8 @@
 // survives a short gap in detection, and reads its identity from several looks instead of one:
 // the embeddings of its most recent detections are averaged, the mean is brought back to unit
 // length, and that pooled embedding is matched against the bank with both tau and the margin
-// (EmbeddingRecognizer.matchPooled). A single odd frame therefore does not rename a card, and
-// a track torn between two identities names nothing.
+// (EmbeddingRecognizer.matchPooled; a frame's tracks in one search). A single odd frame
+// therefore does not rename a card, and a track torn between two identities names nothing.
 //
 // The track layer is not what a tooltip shows: the hover layer answers from the current frame
 // alone (hover-layer.ts). Tracks are for steady outlines.
@@ -77,11 +77,20 @@ export class Tracker {
   private tracks: Track[] = [];
   private nextId = 1;
 
+  private readonly resolveAll: (pooled: readonly Float32Array[]) => Array<string | null>;
+
   /**
    * `identityResolver` is called with a track's pooled embedding on every frame the track is
-   * live and returns the card id to show, or null to name nothing.
+   * live and returns the card id to show, or null to name nothing. `batchResolver`, when given,
+   * answers for all of a frame's pooled embeddings in one call, in order, as `identityResolver`
+   * would for each; it is then used instead.
    */
-  constructor(private readonly identityResolver: (pooled: Float32Array) => string | null) {}
+  constructor(
+    identityResolver: (pooled: Float32Array) => string | null,
+    batchResolver?: (pooled: readonly Float32Array[]) => Array<string | null>,
+  ) {
+    this.resolveAll = batchResolver ?? ((pooled) => pooled.map(identityResolver));
+  }
 
   /** Forget every track: the picture is no longer continuous with the last one (a seek, a new
    *  image). Ids keep counting, so a track made after a reset never reuses an id, and every
@@ -90,10 +99,14 @@ export class Tracker {
     this.tracks = [];
   }
 
-  private identityOf(track: Track): string | null {
-    if (track.embeddings.length === 0) return null;
-    const pooled = poolEmbeddings(track.embeddings);
-    return pooled ? this.identityResolver(pooled) : null;
+  /** The identity of each track, in order: null for one too young or without a pooled
+   *  direction, else the resolver's answer for its pooled embedding (one call for all). */
+  private identitiesOf(tracks: readonly Track[]): Array<string | null> {
+    const pooled = tracks.map((t) => (t.age >= MIN_IDENTITY_FRAMES && t.embeddings.length > 0 ? poolEmbeddings(t.embeddings) : null));
+    const asked = pooled.filter((p): p is Float32Array => p !== null);
+    const answers = asked.length > 0 ? this.resolveAll(asked) : [];
+    let next = 0;
+    return pooled.map((p) => (p === null ? null : (answers[next++] ?? null)));
   }
 
   /**
@@ -141,12 +154,8 @@ export class Tracker {
       });
     }
 
-    return this.tracks
-      .filter((t) => t.misses === 0)
-      .map((t) => ({
-        instanceId: t.instanceId,
-        detection: t.detection,
-        identity: t.age >= MIN_IDENTITY_FRAMES ? this.identityOf(t) : null,
-      }));
+    const matched = this.tracks.filter((t) => t.misses === 0);
+    const identities = this.identitiesOf(matched);
+    return matched.map((t, i) => ({ instanceId: t.instanceId, detection: t.detection, identity: identities[i] ?? null }));
   }
 }

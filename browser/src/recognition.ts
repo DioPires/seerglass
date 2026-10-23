@@ -223,7 +223,7 @@ export async function recognizeFrame(
   for (let i = 0; i < tensors.length; i++) batch.set(tensors[i]!, i * plane);
   const embs = await embedder.embedBatch(batch, kept.length);
 
-  const uprights = kept.map((_, i) => recognizer.matchScored(embs, i * dim));
+  const uprights = recognizer.matchScoredBatch(embs, kept.map((_, i) => i * dim));
   // The turned looks are wanted exactly for the proposals whose upright look is not accepted:
   // embed them all in one batch before choosing.
   const retry: number[] = [];
@@ -247,10 +247,17 @@ export async function recognizeFrame(
     return (j * 3 + k - 1) * dim;
   };
 
+  // chooseLook asks for the turned looks of exactly these proposals, so they are searched for
+  // in one batch too.
+  const turnedLooks = turnedEmbs === null ? [] : recognizer.matchScoredBatch(turnedEmbs, retry.flatMap((i) => [1, 2, 3].map((k) => turnedOffset(i, k))));
   const choices = kept.map((_, i) =>
     chooseLook(
       uprights[i]!,
-      () => [1, 2, 3].map((k) => recognizer.matchScored(turnedEmbs!, turnedOffset(i, k))) as [ScoredMatch, ScoredMatch, ScoredMatch],
+      () => {
+        const j = slotOf.get(i);
+        if (j === undefined) throw new Error(`the turned looks of proposal ${i} were not embedded`);
+        return turnedLooks.slice(j * 3, j * 3 + 3) as [ScoredMatch, ScoredMatch, ScoredMatch];
+      },
       rule,
     ),
   );

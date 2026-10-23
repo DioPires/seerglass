@@ -18,7 +18,7 @@ LICENSED_FOLDERS = ("cardvision", "tests", "labeler", "games", "data", "examples
 SLASHES = f"// {IDENTIFIER}"
 LICENSE_LINE = {
     ".py": HEADER, ".toml": HEADER, ".txt": HEADER, ".yml": HEADER, ".yaml": HEADER,
-    ".js": SLASHES, ".mjs": SLASHES, ".ts": SLASHES, ".mts": SLASHES,
+    ".js": SLASHES, ".mjs": SLASHES, ".ts": SLASHES, ".mts": SLASHES, ".c": SLASHES,
     ".css": f"/* {IDENTIFIER} */",
     ".md": f"<!-- {IDENTIFIER} -->",
     ".html": f"<!-- {IDENTIFIER} -->",

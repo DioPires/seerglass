@@ -16,6 +16,7 @@ the same list; each command has its own `--help`.
 | `cardvision infer` | Detect and name the cards in images or video, with the models from a release document (`--release`) or from separate files. Can also write annotated frames, crops, a contact sheet, and a pre-fill file for the labeling tool. |
 | `cardvision build-release` | Pin models, bank, identity groups, catalog and settings in one release document. |
 | `cardvision verify-release` | Check a release document and every file it pins. |
+| `cardvision pack-bank` | Write a JSON bank as a packed bank: every value an 8-bit integer, in one binary file, about two fifths of the size gzipped. For a release that must download quickly; the JSON bank stays the one you build and extend. |
 
 ### Train
 

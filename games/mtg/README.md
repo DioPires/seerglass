@@ -3,12 +3,15 @@
 # Magic: The Gathering
 
 Seerglass's Magic tools. The code is in [`cardvision/mtg/`](../../cardvision/mtg/), apart from
-the upstream code, so that upstream merges stay clean. This folder holds no catalog yet: the
-catalog is built from Scryfall's bulk data, and is about 80 MB.
+the upstream code, so that upstream merges stay clean. This folder holds the accept rules for
+Arena and for paper and the footage sources, and no catalog: the catalog is built from
+Scryfall's bulk data, and is about 80 MB.
 
-This is Phase 0: measuring how hard Magic is for the released recognizer before anything is
-trained. Nothing here is trained on Magic, and every figure from a model is from the released
-**Riftbound** recognizer, used as a stand-in.
+Phase 0 measured how hard Magic is for the released recognizer before anything is trained.
+Phase 1 started on MTG Arena footage (see [Arena](#arena)) and now aims at streams of paper
+cards (see [Paper](#paper)). Nothing here is trained on Magic yet,
+and every figure from a model is from the released **Riftbound** recognizer, used as a
+stand-in.
 
 ## The commands, in order
 
@@ -114,3 +117,172 @@ perspective, glare, sleeve, overlay or occlusion.
 
 The results of the first full run are in the Phase 0 report, linked from the pull request that
 added this folder.
+
+## Arena
+
+Phase 1 aims at MTG Arena footage first, names only. Its tools build a catalog and a bank for
+Arena from the full catalog, and read Arena's own log of a game.
+
+```sh
+python -m cardvision.mtg arena-catalog --catalog "$WORK/mtg/catalog.json" --images "$WORK/mtg/images.json" \
+    --bulk "$WORK"/bulk/default-cards-*.jsonl.gz --out "$WORK/arena"
+python -m cardvision.mtg arena-tiles --catalog "$WORK/arena/catalog.json" --art "$WORK/art"
+cardvision build-bank --catalog "$REL/catalog.json" --art "$WORK/art" --recognizer "$REL/recognizer.onnx" \
+    --out "$REL/bank.json" --groups-out "$REL/identity-groups.json" --skip-missing-art
+cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/recognizer.onnx" \
+    --bank "$REL/bank.json" --catalog "$REL/catalog.json" --accept "$REL/accept.json" --out "$REL/release.json"
+python -m cardvision.mtg arena-log Player.log --out game-1.json
+```
+
+`$REL` is a release folder holding copies of `$WORK/arena/catalog.json`,
+[`accept.json`](accept.json) and the two models.
+
+`build-bank` embeds about four cards a second on four cores, so a bank of the Arena pool and
+its tiles takes about three hours. `embed` makes the same rows, value for value, about four
+times faster (a test checks that the two agree), and `bank-from-embeddings` turns its shards
+into a base bank. `build-bank --base` then checks every row against its image, embeds what is
+missing and writes the identity groups:
+
+```sh
+python -m cardvision.mtg embed --catalog "$REL/catalog.json" --art "$WORK/art" \
+    --recognizer "$REL/recognizer.onnx" --out "$WORK/emb-arena"
+python -m cardvision.mtg bank-from-embeddings --catalog "$REL/catalog.json" --art "$WORK/art" \
+    --embeddings "$WORK/emb-arena" --model recognizer --out "$WORK/base.json"
+cardvision build-bank --catalog "$REL/catalog.json" --art "$WORK/art" --recognizer "$REL/recognizer.onnx" \
+    --base "$WORK/base.json" --out "$REL/bank.json" --groups-out "$REL/identity-groups.json" --skip-missing-art
+```
+
+| Command | What it does | Writes |
+| --- | --- | --- |
+| `arena-catalog` | The Arena catalog: every face of the Arena pool, a tile entry for each permanent, and the tokens of the pool's sets. See [the Arena catalog](#the-arena-catalog). | `catalog.json`, `images.json` (the pool's and the tokens' image addresses), `arena-summary.json` |
+| `arena-tiles` | Each tile entry's picture, cut from its card's image in the art folder. | `tiles/` in the art folder |
+| `arena-log` | A table of the cards in play, from a `Player.log`. See [Arena's log](#arenas-log). | a JSON table |
+| `bank-from-embeddings` | A base bank from `embed`'s shards: their bank rows, with each image's `artV`. | a bank file |
+
+### The Arena catalog
+
+Arena draws a card whole in the hand (where only its top part shows), on the stack and in the
+inspect view, but draws a permanent on the battlefield as a tile, wider than tall: the name
+bar over the art, and the power and toughness, no rules text. A bank row made from the whole
+card does not match a tile, so each permanent face also has a *tile entry*, `<face id>:art`,
+whose picture runs from the top of the name bar to the bottom of the art box. It is the same
+identity as its card (`printingOf` the identity's representative, `extra.artOf` the face), so
+the two rows never narrow each other's margin. The shape (`extra.tile` is `name-art-v1`) was
+measured on public Arena footage; release v0 used a square from the middle of the art
+(`square-art-v0`). Instants and sorceries have no tile entry.
+
+Tokens come from the token sets of the pool's sets, since Scryfall marks almost none as being
+on Arena. A token named like a card of the pool joins that card's identity; any other token is
+named `<name> token` (`Soldier token`), one identity per name. Emblems and helper cards (The
+Monarch, Day and Night) are left out. The tokens' images are not fetched by the Phase 0 run:
+`fetch-images` with the Arena catalog and its `images.json` fetches them, under the same
+`--download` rule as above, and `build-bank --skip-missing-art` leaves out the tokens without
+one until then.
+
+Each identity's representative is chosen again among the Arena entries, and `extra` keeps only
+the fields the Arena tools read. To label frames, give the labelling tool a catalog made with
+`--no-tiles`: labels name the face, and a tile entry would show each permanent twice in the
+picker.
+
+[`accept.json`](accept.json) is the Arena accept rule: tau 0.72 and delta 0.07, Phase 0's
+operating point for the Arena pool, with the rotation retry off. A tapped permanent on Arena
+tilts by a few degrees and never turns a quarter turn, so the retry finds nothing, and turned
+off it removes a third of the names given to cards outside the bank at the same rate of
+correct names (on Phase 0's synthetic views). It is to be calibrated again on labelled Arena
+frames. [`sources.json`](sources.json) adds the source type `digital/mtg-arena` and marks its
+hand row; the row's start (85 % of the way down the frame) is also to be measured.
+
+### Arena's log
+
+With *Detailed Logs (Plugin Support)* on (Arena's Options, Account), Arena writes what its
+game server sends into `Player.log`: the cards in each zone, by Arena id (Scryfall's
+`arena_id`), but not where they are on the screen. `arena-log` turns it into a table of each
+moment at which what is in view changed: per zone, each card's Arena id, whose it is, whether
+it is tapped, and the time. It is the candidate list of a recording, and with the recording's
+start time, what was in play at each frame.
+
+The log holds personal data: player names, account and match ids, chat. The reader keeps none
+of it, only card ids, zones, seats and times, and it runs where the log is:
+[`cardvision/mtg/arena_log.py`](../../cardvision/mtg/arena_log.py) needs nothing but Python
+3.10, so `python arena_log.py Player.log --out game-1.json` works on the player's own computer
+without installing this repository. Share the table, never the log. Arena replaces
+`Player.log` each time it starts, keeping one `Player-prev.log`, so copy it after each session.
+Card names come from Scryfall's `arena_id`; Arena's own card database and files are not read.
+
+## Paper
+
+Phase 1 now aims at streams of paper cards, tournament coverage first. A paper release's bank
+holds every printing on paper, and the tokens:
+
+```sh
+python -m cardvision.mtg paper-catalog --catalog "$WORK/mtg/catalog.json" --images "$WORK/mtg/images.json" \
+    --bulk "$WORK"/bulk/default-cards-*.jsonl.gz --out "$WORK/paper"
+python -m cardvision.mtg release-catalog --catalog "$WORK/paper/catalog.json" --out "$REL/catalog.json"
+cardvision build-bank --catalog "$REL/catalog.json" --art "$WORK/art" --recognizer "$REL/recognizer.onnx" \
+    --base "$WORK/base.json" --out "$REL/bank.json" --groups-out "$REL/identity-groups.json" --skip-missing-art
+cardvision build-release --detector "$REL/detector.onnx" --recognizer "$REL/recognizer.onnx" \
+    --bank "$REL/bank.json" --catalog "$REL/catalog.json" --accept "$REL/accept.json" --out "$REL/release.json"
+```
+
+`$REL` is a release folder holding a copy of [`accept-paper.json`](accept-paper.json), named
+`accept.json`, and the two models; `$WORK/base.json` is made by `embed` and
+`bank-from-embeddings` as [for Arena](#arena).
+
+| Command | What it does | Writes |
+| --- | --- | --- |
+| `paper-catalog` | The paper catalog: every printing on paper, and the tokens of every paper set's token sets. See [the paper catalog](#the-paper-catalog). | `catalog.json`, `images.json`, `paper-summary.json` |
+| `label-catalog` | The catalog for the [labelling tool](../../labeler/README.md): the same cut, with each entry's `art` its image's address on Scryfall's image host, so that the tool needs no image folder. Give it the paper catalog, or an Arena catalog made with `--no-tiles`. | a catalog file |
+| `release-catalog` | The catalog a release ships: each entry cut to what the browser runtime reads (`id`, `name`, `kind`, `printingOf`, `art`, and `token` and `facets` where an entry has them). | a catalog file |
+| `decklist-names` | A deck list as a deck-list site writes it, with each card of two faces named by both, as the catalog names it ("Callous Sell-Sword" becomes "Callous Sell-Sword // Burn Together"), so that [`decklist_from_text.py`](../../labeler/decklist_from_text.py) matches it. A name is made full only when it is no catalog name itself and exactly one catalog name starts with it and ` // `. | a deck-list text file |
+| `cut-frames` | Frames to label, from a video on Twitch or YouTube: for each `--t`, the frame on screen at that time, cut the way [`cardvision fetch`](../../cardvision/data/fetch.py) cuts it again. See [frames to label](#frames-to-label). | `t<seconds>_<ms>.png` per frame and `times.jsonl` in `--out` |
+
+### The paper catalog
+
+Every entry of the full catalog whose printing exists on paper: the 3,594 faces only on Arena
+(Alchemy's digital cards, on the bulk file of 2026-10-21) never lie on a table, and a bank row
+for one could only ever win wrongly. Tokens are taken and grouped as for
+[Arena](#the-arena-catalog), from the token sets of every set with a paper printing: a token
+named like a card joins that card's identity, and any other is named `<name> token`. A paper
+card is a whole card wherever it lies, so there are no tile entries. On the bulk file of
+2026-10-21: 101,401 faces and 2,836 token faces, 34,244 identities (387 of them tokens).
+`fetch-images` with the paper catalog and its `images.json` fetches only the images not yet
+in the art folder (after a Phase 0 run, the tokens'), under the `--download` rule above.
+
+### The release catalog
+
+The runtime reads nothing in `extra`, and holds every entry in memory. On the full catalog the
+cut takes the file from 80.5 MB to 13.7 MB (4.1 MB gzipped), and, measured in Node, its parsed
+form from about 311 MB of memory to 33 MB. Ids, names, `printingOf` and `art` are unchanged,
+so the identities are the same: a bank built with either catalog is valid with the other. An
+Arena release can be cut the same way.
+
+[`accept-paper.json`](accept-paper.json) is the paper accept rule: tau 0.72 and delta 0.07,
+Arena's values until labelled paper frames calibrate it, with the rotation retry on, since a
+tapped paper card turns a quarter turn.
+
+### Frames to label
+
+A labelled row names its frame by video and time, and whoever fetches it again downloads a
+stretch of the video around that time and takes the frame on screen then. `cut-frames` cuts the
+frame with the same pieces (the stretch fetch plans, its downloader, and the reader's frame at
+`t`) and saves it as PNG, so that the label export writes its fingerprint (`frame_dhash`):
+
+```sh
+python -m cardvision.mtg cut-frames --platform twitch --video 2461092202 --t 33588.261 --out "$FRAMES/scg-rc-hartford"
+cat "$FRAMES"/*/times.jsonl > "$FRAMES/times.jsonl"
+python3 labeler/make_sample.py --out "$FRAMES/sample.json" --frames-root "$FRAMES" --all --times "$FRAMES/times.jsonl"
+```
+
+One folder per video is one asset of the sample; a frame's name is its time, so the times of
+several folders can share one file. The label export reads each frame's video from its asset's
+`"platform"` and `"videoId"`, which `make_sample.py` leaves to be added
+([the labelling format](../../labeler/FORMAT.md)).
+
+It needs the `download` and `video` extras and ffmpeg, and keeps no video. Seeking in the stream
+with ffmpeg alone is not the same: on a Twitch broadcast, `ffmpeg -ss T -i <playlist>` gave a
+frame 6 s from the one at `T`, while the stretch download gave the frame at `T` (checked on
+2026-10-21 against the playlist's segment times).
+
+Tournament coverage is the built-in source type `physical/tournament`, and a game filmed by a
+player's own camera is `physical/webcam`. [`sources.json`](sources.json) adds `physical/show`:
+a produced show filmed from several cameras, such as a Commander show.

@@ -16,10 +16,11 @@
 // This file fetches and checks bytes and builds the pipeline through model factories passed
 // in, so it runs without a browser and without ONNX Runtime (the tests pass their own).
 
-import { type EmbeddingBank, parseBank } from "./bank.js";
+import { type EmbeddingBank, readBankFile } from "./bank.js";
 import { FACE_CLASS } from "./detector/decode.js";
 import type { DetectorSettings, FrameDetector } from "./detector/detector.js";
 import type { BatchEmbedder, EmbedderSettings } from "./embedder.js";
+import { ExactBankScorer } from "./exact-scorer.js";
 import { type HoverSelection, isHoverSelection } from "./hover-layer.js";
 import { groupsByKey, type IdentityDisplay, type IdentityGroups, identityOf, type IdentityRule, isIdentityRule, parseIdentityGroups } from "./identity.js";
 import { EXECUTION_PROVIDERS, type ExecutionProvider } from "./providers.js";
@@ -592,7 +593,7 @@ export async function loadReleaseData(releaseUrl: string, deps: ReleaseDeps = de
       fetchPinned(deps, releaseUrl, release.catalog, "catalog"),
     ]);
 
-    const bank = parseBank(json(bankBuf, "bank"));
+    const bank = readBankFile(new Uint8Array(bankBuf));
     if (!bank) throw new ReleaseFailure("bank: the file is not a bank this runtime can read");
     const checks: Array<[boolean, string]> = [
       [bank.version === release.bank.version, "bank.version differs from the bank file's"],
@@ -705,6 +706,7 @@ export async function buildReleasePipeline(
     if (!embedder) return await fail("recognizer: the model did not initialize on any execution provider, or is not the model the release describes");
     detector = await factories.detector(data.detectorBytes, release.detector.settings, providers);
     if (!detector) return await fail("detector: the model did not initialize on any execution provider, or is not the model the release describes");
+    const scorer = ExactBankScorer.create(data.bank);
     const pipeline = new Pipeline({
       detector,
       embedder,
@@ -717,6 +719,7 @@ export async function buildReleasePipeline(
       classNames: release.detector.settings.classes,
       faceClass: release.detector.settings.faceClass,
       minCropPx: release.detector.settings.minCropPx,
+      scorer,
     });
     return { pipeline, embedder, detector, providers: [...providers] };
   } catch (error) {

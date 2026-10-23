@@ -258,6 +258,16 @@ the images come from a URL). A row looks like
 `artV`. It is there so that a row made from an earlier image of a card can be found. A bank
 written before the field existed has none, and loads as before.
 
+**The packed bank.** For a release that has to download quickly, `cardvision pack-bank` writes
+the same bank as one binary file: a short JSON header with the card ids, then every value as an
+8-bit integer, each row scaled so its largest value is 63 (`--levels`). It is about two fifths
+of the JSON bank's size once gzipped. Readers renormalize every row, as they do for half
+floats, and the arithmetic is exact on integers, so Python and the browser decode the same
+matrix. A packed bank is made from a JSON bank and never edited: its rows record no `artV`, so
+refreshing, `check-bank-art` and the geometric stage take the JSON bank it came from, whose
+SHA-256 it records. Its scores differ from the JSON bank's in the third decimal place, so
+calibrate the accept rule on the release that ships.
+
 A row is not the vector of the clean image alone. A clean image is larger, sharper and more
 exactly cropped than a card in video. So each row is the mean over **16 views** of the image:
 the image itself and 15 copies put through the kind of damage video does (edges moved by up to

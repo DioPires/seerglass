@@ -49,6 +49,7 @@ left out and the command says so.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -64,7 +65,7 @@ import pytest
 
 from cardvision.bank import release as R
 from cardvision.bank.documents import canonical_bytes, read_json, sha256_hex
-from cardvision.core.bank import IdentityGroups, decode_bank, encode_bank, groups_by_name
+from cardvision.core.bank import IdentityGroups, decode_bank, encode_bank, groups_by_name, pack_bank, unpack_bank
 from cardvision.core.catalog import IDENTITY_NAME
 from cardvision.core.preprocess import POOL_V1, POOL_V2, box_average, full128, rot4
 from cardvision.data.dhash import SAME_FRAME_MAX_HAMMING, dhash, hamming
@@ -258,9 +259,12 @@ def _unit_rows(stream: Stream, count: int, dim: int) -> np.ndarray:
     return rows / np.linalg.norm(rows, axis=1, keepdims=True)
 
 
+BANK_IDS = ["GEN-001", "GEN-002", "GEN-002A", "GEN-003", "GEN-P01", "GEN-004", "GEN-002"]
+
+
 def section_bank() -> dict:
     stream = Stream(4001)
-    ids = ["GEN-001", "GEN-002", "GEN-002A", "GEN-003", "GEN-P01", "GEN-004", "GEN-002"]
+    ids = BANK_IDS
     names = {"GEN-001": "Alder", "GEN-002": "Birch", "GEN-002A": "Birch", "GEN-003": "Cedar", "GEN-P01": "Cedar",
              "GEN-004": "Dogwood"}
     doc = encode_bank(ids, _unit_rows(stream, len(ids), 128))
@@ -280,6 +284,26 @@ def section_bank() -> dict:
         "groups": groups, "representative": identity.representative_map(), "identityIds": identity.identity_ids,
         "queries": hexed(queries.astype("<f4")),
         "looks": [{"top": look.top, "score": look.score, "margin": look.margin} for look in looks],
+    }
+
+
+PACKED_HEADER = {"schemaVersion": 1, "kind": "embedding-bank", "version": 3, "model": "récognizer ü", "dim": 128,
+                 "dtype": "fp16", "preprocessing": "full128", "centerMask": False}
+
+
+def section_packed_bank() -> dict:
+    """``section_bank``'s bank (the same entries under ``PACKED_HEADER``), packed at 63 levels."""
+    doc = {**PACKED_HEADER, **encode_bank(BANK_IDS, _unit_rows(Stream(4001), len(BANK_IDS), 128))}
+    body = pack_bank(doc, sha256_hex(canonical_bytes(doc)), levels=63)
+    _, ids, values = unpack_bank(body)
+    v = values.astype(np.float64)
+    rows = (v / np.sqrt((v * v).sum(axis=1, keepdims=True))).astype(np.float32)
+    assert ids == BANK_IDS
+    return {
+        "note": "section_bank's bank as pack_bank writes it, the file as base64; its int8 values as hexadecimal; "
+                "the float32 matrix every reader decodes from it.",
+        "file": base64.b64encode(body).decode("ascii"), "fileSha256": sha256_hex(body), "ids": ids,
+        "values": hexed(values), "matrixSha256": sha(rows.astype("<f4")),
     }
 
 
@@ -955,6 +979,7 @@ def build_contract() -> dict:
         "analysisSize": section_analysis_size(),
         "decode": section_decode(),
         "bank": section_bank(),
+        "packedBank": section_packed_bank(),
         "identity": section_identity(),
         "facets": section_facets(),
         "extra": section_extra(),
