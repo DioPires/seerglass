@@ -969,7 +969,7 @@ release's hover selection or any of the three.
 | `detector/decode.ts` | The detector's output: scores, threshold, suppression, valid boxes | `cardvision/detect/decode.py` |
 | `detector/detector.ts`, `embedder.ts`, `ort.ts` | The two models on ONNX Runtime Web | `cardvision/core/onnx.py` |
 | `preprocess.ts` | The `full128` crop contract and quarter turns | `cardvision/core/preprocess.py` |
-| `bank.ts`, `identity.ts` | The bank file, and the identity groups under the rule the catalog states | `cardvision/core/bank.py`, `cardvision/core/catalog.py` |
+| `bank.ts`, `identity.ts` | The bank file (JSON, or packed by `cardvision pack-bank`), and the identity groups under the rule the catalog states | `cardvision/core/bank.py`, `cardvision/core/catalog.py` |
 | `recognizer.ts`, `recognition.ts` | Best match and margin; the accept rule; the rotation retry; suppression | `cardvision/recognize/` |
 | `exact-scorer.ts`, `exact-kernel.c`, `exact-kernel-wasm.ts` | The bank search in WebAssembly SIMD: a frame's looks in one pass over the bank, with the recognizer's own arithmetic and tie rule, so the answers are the loop's bit for bit | none: the loop in `recognizer.ts` is the reference |
 | `hover-layer.ts`, `hover-geometry.ts`, `scene.ts` | The three hover selections and the hit test | `cardvision/evaluate/hover.py` |

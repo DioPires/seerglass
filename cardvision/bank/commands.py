@@ -333,7 +333,12 @@ def _verify_release_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def _verify_release(args: argparse.Namespace) -> int:
-    from cardvision.bank.release import ReleaseError, bank_image_records, verify_release
+    from cardvision.bank.release import (
+        ReleaseError,
+        bank_image_records,
+        packed_bank_header,
+        verify_release,
+    )
 
     try:
         doc = verify_release(args.release)
@@ -343,8 +348,93 @@ def _verify_release(args: argparse.Namespace) -> int:
         return _fail("verify-release", str(error))
     print(f"release {doc['id']}: ok ({doc['game']}, {doc['bank']['cardCount']} cards in the bank, "
           f"{doc['catalog']['cardCount']} in the catalog; every file present, unchanged and consistent)")
-    recorded, rows = bank_image_records(doc, args.release.parent)
-    print(f"bank: {recorded} of {rows} rows record their source image (artV)")
+    header = packed_bank_header(doc, args.release.parent)
+    if header is None:
+        recorded, rows = bank_image_records(doc, args.release.parent)
+        print(f"bank: {recorded} of {rows} rows record their source image (artV)")
+    else:
+        print(f"bank: packed, int8 values within ±{header['levels']}, from the JSON bank "
+              f"{header['source']['sha256'][:16]} (version {header.get('version')}); "
+              "its rows record no source image (artV)")
+    return 0
+
+
+# -------------------------------------------------------------------------------- pack-bank
+def _pack_bank_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("bank", type=Path, metavar="BANK", help="the JSON bank to pack")
+    parser.add_argument("--out", required=True, type=Path,
+                        help="where to write the packed bank; its identity groups are written beside it")
+    parser.add_argument("--groups", type=Path,
+                        help="the JSON bank's identity groups (default: the groups file beside it)")
+    parser.add_argument("--groups-out", type=Path,
+                        help="where to write the packed bank's identity groups (default: <out>.identity-groups.json)")
+    parser.add_argument("--levels", type=int,
+                        help="the largest magnitude a stored value may take, 1 to 127 (default: 63)")
+    parser.add_argument("--overwrite", action="store_true", help="replace existing output files")
+
+
+def _pack_bank(args: argparse.Namespace) -> int:
+    import gzip
+    import json
+
+    import numpy as np
+
+    from cardvision.bank.build import GROUPS_KIND, groups_path_for
+    from cardvision.bank.documents import (
+        DocumentExistsError,
+        canonical_bytes,
+        read_json,
+        sha256_hex,
+        write_document,
+    )
+    from cardvision.core.bank import (
+        PACKED_LEVELS,
+        decode_bank,
+        is_packed,
+        pack_bank,
+        read_bank_bytes,
+    )
+
+    levels = PACKED_LEVELS if args.levels is None else args.levels
+    groups_in = args.groups or groups_path_for(args.bank)
+    groups_out = args.groups_out or groups_path_for(args.out)
+    try:
+        inputs = {path.resolve() for path in (args.bank, groups_in)}
+        clash = sorted(str(path) for path in inputs & {path.resolve() for path in (args.out, groups_out)})
+        if clash:
+            return _fail("pack-bank", f"{clash[0]} is both an input and an output: write the packed bank and its "
+                                      "groups to other paths")
+        source = args.bank.read_bytes()
+        if is_packed(source):
+            return _fail("pack-bank", f"{args.bank} is already a packed bank; give the JSON bank it was packed from")
+        try:
+            doc = json.loads(source)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            return _fail("pack-bank", f"{args.bank.name}: not valid JSON: {error}")
+        source_sha256 = sha256_hex(source)
+        groups = read_json(groups_in)
+        if not isinstance(groups, dict) or groups.get("kind") != GROUPS_KIND or not isinstance(groups.get("bank"), dict):
+            return _fail("pack-bank", f"{groups_in} is not an identity-groups document")
+        if groups["bank"].get("sha256") != source_sha256:
+            return _fail("pack-bank", f"{groups_in} was not made for {args.bank} (its bank sha256 differs); "
+                                      "give the bank's own groups with --groups")
+        body = pack_bank(doc, source_sha256, levels)
+        _, ids, rows = read_bank_bytes(body)
+        _, source_rows = decode_bank(doc)
+        cosine = float((rows.astype(np.float64) * source_rows.astype(np.float64)).sum(axis=1).min())
+        groups_body = canonical_bytes({**groups, "bank": {**groups["bank"], "sha256": sha256_hex(body)}})
+        if not args.overwrite:
+            for path, written in ((args.out, body), (groups_out, groups_body)):
+                if path.exists() and path.read_bytes() != written:
+                    write_document(path, written)  # raises, naming the file
+        write_document(args.out, body, args.overwrite)
+        write_document(groups_out, groups_body, args.overwrite)
+    except (DocumentExistsError, OSError, ValueError) as error:
+        return _fail("pack-bank", str(error))
+    print(f"packed bank: {args.out} ({len(ids)} rows of {rows.shape[1]} values, int8 within ±{levels}; "
+          f"{len(body)} bytes, {len(gzip.compress(body, 6))} gzipped)")
+    print(f"identity groups: {groups_out}")
+    print(f"smallest cosine of a packed row to its JSON bank's row: {cosine:.6f}")
     return 0
 
 
@@ -360,4 +450,6 @@ COMMANDS: dict[str, tuple[str, Callable[[argparse.ArgumentParser], None], Callab
                       _build_release_arguments, _build_release),
     "verify-release": ("Check a release document and every file it pins.",
                        _verify_release_arguments, _verify_release),
+    "pack-bank": ("Write a JSON bank as a packed bank, 8-bit values in one binary file, for a smaller release.",
+                  _pack_bank_arguments, _pack_bank),
 }

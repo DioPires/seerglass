@@ -31,10 +31,18 @@ def sha256_hex(data: bytes) -> str:
 
 
 def read_json(path: str | Path) -> Any:
-    """Parse a JSON file. A file that is not JSON raises ``ValueError`` naming it."""
+    """Parse a JSON file. A file that is not JSON raises ``ValueError`` naming it; a packed bank
+    (``cardvision.core.bank``) is refused as one, since a tool that reads a bank as JSON needs
+    what only the JSON bank holds."""
+    from cardvision.core.bank import is_packed
+
     path = Path(path)
+    body = path.read_bytes()
+    if is_packed(body):
+        raise ValueError(f"{path.name} is a packed bank, which only releases and the recognizer read; "
+                         "give the JSON bank it was packed from (its source.sha256)")
     try:
-        return json.loads(path.read_bytes())
+        return json.loads(body)
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
         raise ValueError(f"{path.name}: not valid JSON: {error}") from None
 

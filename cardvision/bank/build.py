@@ -524,9 +524,13 @@ def identity_groups_document(bank: Mapping[str, Any], bank_sha256: str, catalog:
 
 
 def groups_path_for(bank_path: str | Path) -> Path:
-    """Where the identity groups of a bank file are written by default: beside it."""
+    """Where the identity groups of a bank file are written by default: beside it, named after
+    its stem for a ``.json`` bank (``bank.json``: ``bank.identity-groups.json``) and after its
+    whole name otherwise (``bank.bin``: ``bank.bin.identity-groups.json``), so that a packed
+    bank's groups never take the place of its JSON source's."""
     bank_path = Path(bank_path)
-    return bank_path.with_name(bank_path.stem + ".identity-groups.json")
+    base = bank_path.stem if bank_path.suffix == ".json" else bank_path.name
+    return bank_path.with_name(base + ".identity-groups.json")
 
 
 def write_bank(bank: Mapping[str, Any], catalog: Catalog, out: str | Path,

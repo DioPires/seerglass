@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { parseBank } from "../src/bank.js";
 import type { Candidate } from "../src/boxes.js";
 import {
   anchorCount,
@@ -93,6 +94,28 @@ async function reasonOf(files: Files): Promise<string> {
 }
 
 const jsonOf = (files: Files, name: string) => JSON.parse(new TextDecoder().decode(files.get(name)!));
+
+/** A JSON bank's file packed as `cardvision pack-bank` does, at 63 levels, for a test: the
+ *  arithmetic is the Python package's (contract.json's packedBank pins that), the source hash a
+ *  stand-in. */
+function packBank(json: Uint8Array): Uint8Array {
+  const doc = JSON.parse(new TextDecoder().decode(json));
+  const bank = parseBank(doc)!;
+  const { entries: _entries, ...rest } = doc;
+  const header = { ...rest, kind: "embedding-bank-packed", schemaVersion: 1, dtype: "int8", levels: 63, source: { sha256: "0".repeat(64), dtype: "fp16" }, ids: bank.ids };
+  const head = new TextEncoder().encode(JSON.stringify(header));
+  const out = new Uint8Array(12 + head.length + bank.matrix.length);
+  out.set([0x89, 0x63, 0x76, 0x62, 0x61, 0x6e, 0x6b, 0x0a]);
+  new DataView(out.buffer).setUint32(8, head.length, true);
+  out.set(head, 12);
+  const values = new Int8Array(out.buffer, 12 + head.length);
+  for (let r = 0; r < bank.ids.length; r++) {
+    const row = bank.matrix.subarray(r * bank.dim, (r + 1) * bank.dim);
+    const top = Math.max(...row.map(Math.abs));
+    row.forEach((v, k) => (values[r * bank.dim + k] = Math.round((v * 63) / top)));
+  }
+  return out;
+}
 
 describe("the release document as the Python package writes it", () => {
   it("parses, and carries every setting the runtime acts on", () => {
@@ -355,6 +378,34 @@ describe("loading a release, all-or-nothing", () => {
     expect(await reasonOf(await toyRelease((doc) => (doc.recognizer.dim = 64)))).toContain("vector size");
     // A bank that records the release's own tau is fine, though its groups file no longer names it.
     expect(await reasonOf(await withBank((b) => (b.tau = 0.9)))).toContain("identity.groups: the file was not made for this release's bank");
+  });
+
+  it("loads a release whose bank is packed, with the JSON bank's cards and rows within rounding", async () => {
+    const packed = await toyRelease(async (doc, files) => {
+      files.set("bank.bin", packBank(files.get("bank.json")!));
+      files.delete("bank.json");
+      doc.bank.path = "bank.bin";
+      await pin(doc.bank, files);
+      const groups = jsonOf(files, "bank.identity-groups.json");
+      groups.bank.sha256 = doc.bank.sha256;
+      files.set("bank.identity-groups.json", text(groups));
+    }, ["identity.groups"]);
+    const [fromJson, fromPacked] = [await load(await toyRelease()), await load(packed)];
+    if (!fromJson.ok || !fromPacked.ok) throw new Error(fromJson.ok ? (fromPacked.ok ? "" : fromPacked.reason) : fromJson.reason);
+    const [a, b] = [fromJson.data.bank, fromPacked.data.bank];
+    expect([b.ids, b.dim, b.version, b.model, b.preprocessing, b.tau]).toEqual([a.ids, a.dim, a.version, a.model, a.preprocessing, a.tau]);
+    for (let r = 0; r < a.ids.length; r++) {
+      let cosine = 0;
+      for (let k = 0; k < a.dim; k++) cosine += a.matrix[r * a.dim + k]! * b.matrix[r * a.dim + k]!;
+      expect(cosine).toBeGreaterThan(0.999);
+    }
+    expect(fromPacked.data.identityGroups.groups).toEqual(fromJson.data.identityGroups.groups);
+    // A packed bank is pinned like any file: one changed byte fails the load.
+    const damaged = new Map(packed);
+    const bytes = damaged.get("bank.bin")!.slice();
+    bytes[bytes.length - 1] = bytes[bytes.length - 1]! ^ 1;
+    damaged.set("bank.bin", bytes);
+    expect(await reasonOf(damaged)).toContain("bank");
   });
 
   it("refuses a catalog for another game, of another size, or without one of the bank's cards", async () => {

@@ -16,7 +16,7 @@
 // This file fetches and checks bytes and builds the pipeline through model factories passed
 // in, so it runs without a browser and without ONNX Runtime (the tests pass their own).
 
-import { type EmbeddingBank, parseBank } from "./bank.js";
+import { type EmbeddingBank, readBankFile } from "./bank.js";
 import { FACE_CLASS } from "./detector/decode.js";
 import type { DetectorSettings, FrameDetector } from "./detector/detector.js";
 import type { BatchEmbedder, EmbedderSettings } from "./embedder.js";
@@ -593,7 +593,7 @@ export async function loadReleaseData(releaseUrl: string, deps: ReleaseDeps = de
       fetchPinned(deps, releaseUrl, release.catalog, "catalog"),
     ]);
 
-    const bank = parseBank(json(bankBuf, "bank"));
+    const bank = readBankFile(new Uint8Array(bankBuf));
     if (!bank) throw new ReleaseFailure("bank: the file is not a bank this runtime can read");
     const checks: Array<[boolean, string]> = [
       [bank.version === release.bank.version, "bank.version differs from the bank file's"],

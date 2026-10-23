@@ -11,13 +11,14 @@ These are the public surface: changed only as [versioning](#versioning) and
 
 - **The `cardvision` commands, their flags and their exit codes:** `import-catalog`,
   `check-catalog`, `check-bank-art`, `build-bank`, `infer`, `build-release`, `verify-release`,
+  `pack-bank`,
   `make-composites`, `fetch-textures`, `train-recognizer`, `train-detector`, `export`,
   `evaluate`, `calibrate`, `check-refresh`, `build-features`, `pack-features`,
   `validate-manifest`, `fetch`, `record-reachable` and `assign-roles`. Report text meant for
   people may be reworded.
 - **The files a release is made of:**
   - the release document (`release.json`);
-  - the bank;
+  - the bank, as a JSON bank or a packed bank;
   - the identity groups;
   - the geometric index;
   - the catalog.
